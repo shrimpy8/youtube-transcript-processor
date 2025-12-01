@@ -1,0 +1,268 @@
+'use client'
+
+import { useState } from 'react'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Loader2 } from 'lucide-react'
+import Image from 'next/image'
+import { ChannelDetails } from './ChannelDetails'
+import { PlaylistDetails } from './PlaylistDetails'
+import { TranscriptViewer } from './TranscriptViewer'
+import { TranscriptStats } from './TranscriptStats'
+import { ExportControls } from './ExportControls'
+import { AISummary } from './AISummary'
+import { ProcessedTranscript } from '@/types'
+import { formatDuration as formatDurationUtil, formatDate as formatDateUtil } from '@/lib/date-utils'
+
+export interface VideoMetadata {
+  id: string
+  title: string
+  url: string
+  publishedAt?: string
+  duration?: number
+  thumbnail?: string
+  channelTitle?: string
+  description?: string
+}
+
+interface VideoPreviewProps {
+  metadata: VideoMetadata | null
+  isLoading?: boolean
+  error?: string | null
+  errorSuggestion?: string | null
+  onProcess?: () => void
+  onPasteUrl?: (url: string) => void
+  transcript?: ProcessedTranscript | null
+  onReProcess?: () => void
+  channelUrl?: string | null
+  playlistUrl?: string | null
+}
+
+/**
+ * Video preview component that displays video metadata
+ */
+export function VideoPreview({ 
+  metadata, 
+  isLoading = false, 
+  error,
+  errorSuggestion,
+  onProcess,
+  onPasteUrl,
+  transcript,
+  onReProcess,
+  channelUrl,
+  playlistUrl
+}: VideoPreviewProps) {
+  const [activeTab, setActiveTab] = useState('video')
+
+  const handleTabChange = (value: string) => {
+    setActiveTab(value)
+  }
+
+  // Determine which tabs to show
+  const showChannelTab = channelUrl || metadata?.url
+  const showPlaylistTab = playlistUrl
+  const tabCount = 1 + (transcript ? 1 : 0) + (showChannelTab ? 1 : 0) + (showPlaylistTab ? 1 : 0)
+  
+  // Generate grid class based on tab count
+  const gridClass = 
+    tabCount === 1 ? 'grid-cols-1' :
+    tabCount === 2 ? 'grid-cols-2' :
+    tabCount === 3 ? 'grid-cols-3' :
+    'grid-cols-4'
+
+  if (isLoading) {
+    return (
+      <Card>
+        <CardContent className="flex items-center justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          <span className="ml-2 text-muted-foreground">Loading video information...</span>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  if (error) {
+    return (
+      <Card>
+        <CardContent className="py-6">
+          <div className="text-center">
+            <p className="text-destructive mb-4 font-medium">{error}</p>
+            {errorSuggestion && (
+              <p className="text-sm text-muted-foreground mb-2">
+                {errorSuggestion}
+              </p>
+            )}
+            {!errorSuggestion && (
+              <p className="text-sm text-muted-foreground">
+                Please check the URL and try again.
+              </p>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  // Show component if we have metadata, channel URL, or playlist URL
+  if (!metadata && !channelUrl && !playlistUrl) {
+    return null
+  }
+
+  // Use centralized date utilities
+  const formatDuration = (seconds?: number): string => {
+    if (!seconds) return 'Unknown'
+    return formatDurationUtil(seconds)
+  }
+
+  const formatDate = (dateString?: string): string => {
+    return formatDateUtil(dateString)
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        {/* Video metadata at the top right */}
+        {metadata && (
+          <div className="flex flex-col items-end gap-2 text-right">
+            {metadata.title && (
+              <CardTitle className="line-clamp-2 text-lg">{metadata.title}</CardTitle>
+            )}
+            <div className="flex flex-wrap items-center justify-end gap-3 text-sm text-muted-foreground">
+              {metadata.publishedAt && (
+                <span>{formatDate(metadata.publishedAt)}</span>
+              )}
+              {metadata.channelTitle && (
+                <>
+                  {metadata.publishedAt && <span>•</span>}
+                  <span>{metadata.channelTitle}</span>
+                </>
+              )}
+            </div>
+          </div>
+        )}
+      </CardHeader>
+      <CardContent>
+        <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
+          <TabsList className={`grid w-full ${gridClass}`}>
+            <TabsTrigger value="video">Video</TabsTrigger>
+            {transcript && <TabsTrigger value="ai-summary">AI Summary</TabsTrigger>}
+            {showChannelTab && <TabsTrigger value="channel">Channel</TabsTrigger>}
+            {showPlaylistTab && <TabsTrigger value="playlist">Playlist</TabsTrigger>}
+          </TabsList>
+          
+          {/* Video Tab - shows preview and transcript */}
+          <TabsContent value="video" className="space-y-4 mt-4">
+            {metadata ? (
+              <>
+                {/* Always show preview section at top */}
+                <div className="space-y-4">
+                  {metadata.thumbnail && (
+                    <div className="relative aspect-video w-full overflow-hidden rounded-lg">
+                      <Image
+                        src={metadata.thumbnail}
+                        alt={metadata.title}
+                        fill
+                        className="object-cover"
+                      />
+                    </div>
+                  )}
+                  
+                  {metadata.duration && (
+                    <div className="text-sm">
+                      <span className="font-medium">Duration:</span>{' '}
+                      <span className="text-muted-foreground">{formatDuration(metadata.duration)}</span>
+                    </div>
+                  )}
+
+                  {!transcript && onProcess && (
+                    <Button 
+                      onClick={onProcess} 
+                      className="w-full"
+                      size="lg"
+                    >
+                      Extract Transcript
+                    </Button>
+                  )}
+                </div>
+
+                {/* Show transcript if available */}
+                {transcript && (
+                  <div className="space-y-6 mt-6">
+                    {/* Statistics */}
+                    <TranscriptStats transcript={transcript} />
+
+                    {/* Transcript Viewer with Search */}
+                    <TranscriptViewer
+                      transcript={transcript}
+                      videoTitle={metadata?.title || 'Video'}
+                    />
+
+                    {/* Export Controls */}
+                    <ExportControls
+                      transcript={transcript}
+                      videoTitle={metadata?.title || 'Video'}
+                    />
+
+                    {/* Re-process Button */}
+                    {onReProcess && (
+                      <div className="flex justify-center">
+                        <button
+                          onClick={onReProcess}
+                          className="text-sm text-muted-foreground hover:text-foreground underline"
+                        >
+                          Re-process with current options
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                <p>No video selected. Use the Channel or Playlist tab to browse videos.</p>
+              </div>
+            )}
+          </TabsContent>
+          
+          {/* AI Summary Tab - only show when transcript is available */}
+          {transcript && metadata && (
+            <TabsContent value="ai-summary" className="mt-4">
+              <AISummary 
+                transcript={transcript}
+                videoTitle={metadata.title}
+              />
+            </TabsContent>
+          )}
+
+          {/* Channel Tab - only shows channel videos */}
+          {showChannelTab && (
+            <TabsContent value="channel" className="mt-4">
+              <ChannelDetails 
+                videoUrl={metadata?.url || null}
+                channelUrl={channelUrl || null}
+                onPasteUrl={onPasteUrl}
+              />
+            </TabsContent>
+          )}
+
+          {/* Playlist Tab - only shows playlist videos */}
+          {showPlaylistTab && (
+            <TabsContent value="playlist" className="mt-4">
+              {playlistUrl && (
+                <PlaylistDetails 
+                  playlistUrl={playlistUrl} 
+                  onPasteUrl={onPasteUrl}
+                />
+              )}
+            </TabsContent>
+          )}
+        </Tabs>
+      </CardContent>
+    </Card>
+  )
+}
+
+
+

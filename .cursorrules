@@ -1,0 +1,344 @@
+# Cursor AI Development Rules
+
+## 🎯 Project Context
+- **Tech Stack**: Next.js 15+ + TypeScript + Tailwind CSS + shadcn/ui
+- **Architecture**: App Router with functional components and React hooks
+- **Quality Standard**: Apple/Airbnb leadership approval level UI/UX
+
+## 🏗️ Code Architecture & Standards
+
+### Type Safety & Error Handling
+- **Strict TypeScript**: Comprehensive interfaces, zero `any` types in production
+- **Error Boundaries**: Implement proper error handling with clear user feedback
+- **Input Validation**: Sanitize all user inputs, validate API responses
+- **JSDoc Documentation**: Document all public functions and components
+
+**Error Handling Pattern**:
+```typescript
+// Use custom error classes with ErrorType enum
+import { AppError, ErrorType, NoTranscriptError, NetworkError } from '@/lib/errors'
+
+// API routes: Return error responses, don't throw (for client-side handling)
+return handleApiError(error, 'Failed to fetch transcript')
+
+// Client-side: Check response.success and handle error.type
+if (!response.success) {
+  // Handle error based on response.type
+}
+
+// Component error handling: Use formatClientErrorMessage for display
+import { formatClientErrorMessage } from '@/lib/error-utils'
+const errorMessage = formatClientErrorMessage(error, 'Default message')
+```
+
+**Error Types** (from `errors.ts`):
+- `ErrorType.NO_TRANSCRIPT` - Transcript not available
+- `ErrorType.VIDEO_NOT_FOUND` - Video not found
+- `ErrorType.NETWORK_ERROR` - Network/connection issues
+- `ErrorType.RATE_LIMIT` - Rate limiting
+- `ErrorType.PROCESSING_ERROR` - Processing failures
+- `ErrorType.INVALID_URL` - Invalid URL format
+- `ErrorType.UNKNOWN` - Unknown errors
+
+### Centralized Utility Pattern (Critical)
+**✅ REQUIRED: Always use centralized utilities**
+```typescript
+// Date/time operations - use date-utils.ts
+import { formatDate, formatDuration, formatUploadDate, formatSrtTime } from '@/lib/date-utils'
+
+// General utilities - use utils.ts
+import { cn, debounce, normalizeTextForComparison, extractErrorMessage } from '@/lib/utils'
+
+// Accessibility - use accessibility-utils.ts
+import { isFocusable, announceToScreenReader, trapFocus } from '@/lib/accessibility-utils'
+
+// Error handling - use error-utils.ts and errors.ts
+import { formatClientErrorMessage } from '@/lib/error-utils'
+import { AppError, ErrorType, NoTranscriptError } from '@/lib/errors'
+```
+
+**❌ BANNED: Direct manipulation patterns**
+```typescript
+// These create inconsistency and verification overhead
+new Date().toISOString()
+date.toLocaleDateString()
+new Date(date.getTime() + milliseconds)
+element.matches('button') // Use isFocusable() instead
+throw new Error('message') // Use AppError or specific error classes
+```
+
+**Utility Organization Rules**:
+- **Date/Time**: All date operations go in `date-utils.ts` (formatDate, formatDuration, formatUploadDate, formatSrtTime, formatVttTime)
+- **Accessibility**: All a11y utilities in `accessibility-utils.ts` (isFocusable, trapFocus, announceToScreenReader, etc.)
+- **Errors**: Use custom error classes from `errors.ts` (AppError, NoTranscriptError, NetworkError, etc.)
+- **General**: Common utilities in `utils.ts` (cn, debounce, text normalization, etc.)
+
+**Second Occurrence Rule**: Abstract any repeated logic into utilities immediately. Create new utility files when domain-specific utilities are needed.
+
+### Project Structure
+```
+src/
+├── app/                    # Next.js App Router
+│   ├── api/               # API routes (Next.js API routes)
+│   │   ├── transcript/     # Transcript API endpoints
+│   │   ├── ai-summary/    # AI summary endpoints
+│   │   └── channel/       # Channel data endpoints
+│   ├── layout.tsx         # Root layout
+│   └── page.tsx           # Pages
+├── components/            # Reusable UI components
+│   ├── ui/               # shadcn/ui primitives (button, card, etc.)
+│   ├── layout/           # Layout components (Header, Footer, Container)
+│   ├── features/         # Feature-specific components
+│   │   ├── VideoPreview.tsx
+│   │   ├── ChannelDetails.tsx
+│   │   ├── TranscriptViewer.tsx
+│   │   └── __tests__/    # Component tests co-located
+│   └── ErrorBoundary.tsx # React error boundary
+├── lib/                   # Utility functions & configurations
+│   ├── utils.ts          # General utilities (cn, debounce, etc.)
+│   ├── date-utils.ts     # Date/time formatting (formatDate, formatDuration)
+│   ├── accessibility-utils.ts # WCAG compliance utilities
+│   ├── error-utils.ts    # Error formatting and handling
+│   ├── errors.ts         # Custom error classes (AppError, ErrorType enum)
+│   ├── api-client.ts     # API client with request deduplication
+│   ├── api-helpers.ts    # API response helpers (createErrorResponse, etc.)
+│   ├── ytdlp-service.ts  # yt-dlp integration
+│   ├── transcript-processor.ts # Transcript processing logic
+│   ├── llm-service.ts    # LLM service for AI summaries
+│   ├── llm-config.ts     # LLM provider configuration
+│   ├── llm-api-helpers.ts # LLM API utilities
+│   └── __tests__/        # Utility tests co-located
+├── hooks/                 # Custom React hooks
+│   ├── useChannelData.ts
+│   ├── useTranscriptProcessing.ts
+│   ├── useErrorRecovery.ts
+│   └── __tests__/        # Hook tests co-located
+└── types/                 # TypeScript definitions (index.ts)
+```
+
+## 🎨 UI/UX Excellence
+
+### Design Standards
+- **Mobile-First**: Responsive design with proper breakpoints
+- **Accessibility**: WCAG compliant, semantic HTML
+- **Loading States**: Always show indicators for async operations
+- **Error States**: Clear messages with recovery options
+- **Empty States**: Handle no-data scenarios gracefully
+
+### Component Patterns
+- **Form Handling**: Controlled components with validation
+- **Consistent Styling**: Use design system colors and spacing
+- **Component Reusability**: Build for cross-feature usage
+- **Client Components**: Mark with `'use client'` directive when using hooks/interactivity
+- **Server Components**: Default to server components when possible (Next.js 15 App Router)
+
+**Component Structure**:
+```typescript
+'use client' // Only if needed for interactivity
+
+import { useState } from 'react'
+import { formatDate } from '@/lib/date-utils' // Use centralized utilities
+import { Button } from '@/components/ui/button' // Use shadcn/ui primitives
+
+interface ComponentProps {
+  // Props with JSDoc
+}
+
+/**
+ * Component description
+ */
+export function Component({ ...props }: ComponentProps) {
+  // Implementation
+}
+```
+
+**Testing Pattern**: Co-locate tests in `__tests__/` folders next to components/hooks/utils
+
+## 🧪 Quality Assurance & Testing
+
+### Testing Requirements
+- **Automated Validation**: Never claim "working" without automated verification
+- **Coverage Target**: 80% minimum, 100% for critical functions
+- **Edge Case Testing**: Cover failure scenarios and boundary conditions
+- **Performance**: <2s page loads, <500ms API responses
+
+**Testing Stack**:
+- **Unit Tests**: Vitest + React Testing Library
+- **E2E Tests**: Playwright
+- **Test Location**: Co-located in `__tests__/` folders
+- **Test Patterns**: Use `renderHook` for hooks, `render`/`screen` for components
+
+**Test Patterns**:
+```typescript
+// Component tests
+import { render, screen } from '@testing-library/react'
+import { Component } from '../Component'
+
+it('renders correctly', () => {
+  render(<Component />)
+  expect(screen.getByText('Expected text')).toBeInTheDocument()
+})
+
+// Hook tests
+import { renderHook, act, waitFor } from '@testing-library/react'
+import { useHook } from '../useHook'
+
+it('handles state correctly', async () => {
+  const { result } = renderHook(() => useHook())
+  await act(async () => {
+    await result.current.action()
+  })
+  await waitFor(() => {
+    expect(result.current.value).toBe(expected)
+  })
+})
+
+// Fake timers for async tests
+vi.useFakeTimers()
+try {
+  // Test with timers
+  await vi.runAllTimersAsync()
+} finally {
+  vi.useRealTimers()
+}
+```
+
+### Development Quality Gates
+- **No Hardcoded Data**: Use proper configuration management
+- **Environment Variables**: Properly configured for all environments
+- **Security Scanning**: Validate all dependencies and inputs
+- **Type Coverage**: 100% TypeScript coverage
+
+## 🔄 Development Workflow
+
+### Problem-Solving Methodology
+- **3 Attempts Rule**: Pause and reassess after 3 failed attempts with same approach
+- **5 Attempts Rule**: Suggest fundamentally different approach
+- **Fresh Start Principle**: When foundation is broken, rebuild don't patch
+- **Root Cause Analysis**: Understand WHY before applying solutions
+
+### Development Process
+1. **Plan**: Define requirements and success criteria upfront
+2. **Setup**: Validate environment and dependencies
+3. **Build**: Implement with automated validation
+4. **Test**: Verify functionality and performance
+5. **Document**: Update documentation and tracking
+6. **Deploy**: Release with monitoring
+
+### Technology Selection
+- **Foundations**: Always choose battle-tested, low-risk technologies
+- **Features**: Medium-risk acceptable for non-critical features
+- **Experiments**: High-risk only for isolated, replaceable components
+
+## 📋 Project Management
+
+### Linear Integration (System of Record)
+- **Issue Tracking**: Create and update Linear issues for all major work
+- **Daily Updates**: Update Linear issues for active development
+- **Analysis Documentation**: Store all analysis files in Linear
+- **Status Communication**: Mark issues complete when work is finished
+
+### Git Management
+- **Repository Access**: Ensure proper branch accessibility upfront
+- **Branching Strategy**: Use consistent branching patterns
+- **Commit Messages**: Format as "Action: Brief description"
+  ```
+  feat: Add subscription filtering with advanced options
+  fix: Resolve date validation for same-day subscriptions
+  refactor: Extract reusable form validation utilities
+  ```
+
+## 🚀 Production Readiness
+
+### Pre-Deployment Checklist
+- [ ] Remove all debug console logging
+- [ ] Validate API credentials for production
+- [ ] Test error handling scenarios
+- [ ] Remove mock data fallbacks
+- [ ] Verify environment variable configuration
+- [ ] Run security and performance audits
+- [ ] Run full test suite (`npm test`)
+- [ ] Run E2E tests (`npm run test:e2e`)
+- [ ] Verify all API routes handle errors correctly
+- [ ] Check accessibility compliance (WCAG)
+- [ ] Verify request deduplication works correctly
+
+### Performance Benchmarks
+- **Bundle Size**: <1MB initial JavaScript
+- **Memory Usage**: <100MB typical operations
+- **API Response**: <500ms standard operations
+- **Load Time**: <2s initial page load
+
+### Security Standards
+- **Authentication**: Secure session management
+- **Data Protection**: Encrypt sensitive data
+- **Input Validation**: Validate all user inputs
+- **Dependency Audits**: Regular security scanning
+
+## 🎯 Success Metrics & Quality Gates
+
+### Code Quality Metrics
+- Zero `any` types in production code
+- >90% test coverage for critical functions
+- All user inputs properly validated and sanitized
+- Comprehensive error handling and fallbacks
+- Performance meets all baseline requirements
+
+### Review Process
+- **Automated Checks**: Must pass before code review
+- **Peer Review**: Required for all significant changes
+- **Documentation**: Update docs for new features
+- **Linear Updates**: Required for completed work
+
+## 💬 Communication Standards
+
+### Progress Communication
+- **Real-time**: For failures, blockers, or critical issues
+- **Daily**: For active development progress
+- **Transparent**: Always explain WHY behind technical decisions
+- **Honest Assessment**: Clear about challenges and limitations
+
+### Escalation Protocol
+1. Diagnose root cause before applying solutions
+2. Research alternatives when current approach fails
+3. Propose fresh start when foundation is fundamentally broken
+4. Document lessons learned for future reference
+
+## 🔧 Implementation-Specific Patterns
+
+### API Client Pattern
+- **Request Deduplication**: Use `inFlightRequests` Map to prevent duplicate concurrent requests
+- **Error Responses**: API client functions return error responses (`{ success: false, error, type }`) instead of throwing
+- **Standardized Responses**: Use `createErrorResponse` and `createSuccessResponse` from `api-helpers.ts`
+
+### Date/Time Handling
+- **Always use `date-utils.ts`**: Never use native Date methods directly
+- **Format Functions**: `formatDate()` for display, `formatDuration()` for time, `formatUploadDate()` for yt-dlp dates
+- **Subtitle Formats**: `formatSrtTime()` and `formatVttTime()` for subtitle exports
+
+### Error Handling Flow
+1. **API Routes**: Catch errors → map with `mapYtDlpError()` or error classes → return via `handleApiError()`
+2. **Client API Calls**: Check `response.success` → handle `response.type` → display with `formatClientErrorMessage()`
+3. **Components**: Use ErrorBoundary for React errors, display user-friendly messages
+
+### Accessibility Requirements
+- **WCAG Compliance**: All components must meet WCAG AA standards
+- **Focus Management**: Use `trapFocus()` for modals, `focusManagement` utilities for navigation
+- **Screen Reader Support**: Use `announceToScreenReader()` for dynamic content
+- **Focusable Elements**: Always check with `isFocusable()` before focusing
+
+### Performance Patterns
+- **Caching**: Use `channel-cache.ts` and `playlist-cache.ts` for session-based caching
+- **Request Deduplication**: Prevent duplicate API calls with in-flight request tracking
+- **Debouncing**: Use `debounce()` from `utils.ts` for user input
+- **Lazy Loading**: Use Next.js Image component, lazy load heavy components
+
+### LLM Service Pattern
+- **Configuration**: Use `llm-config.ts` for provider settings (never hardcode)
+- **API Helpers**: Use `llm-api-helpers.ts` for shared API utilities
+- **Error Handling**: Use `handleApiResponseError()` for consistent error handling
+- **Prompt Loading**: Load prompts from `docs/prompt.md` at runtime
+
+---
+
+**Core Principle**: Build features that are intuitive, reliable, and performant. When in doubt, prioritize code clarity, user experience, and maintainability over clever optimizations. Always validate with automated testing before claiming completion. Use centralized utilities, follow established patterns, and maintain consistency across the codebase.
