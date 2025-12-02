@@ -312,7 +312,6 @@ npm run test:e2e      # E2E tests
 - **[docs/ENV_VARIABLES.md](./docs/ENV_VARIABLES.md)** - Environment variable configuration
 - **[docs/API_VERIFICATION.md](./docs/API_VERIFICATION.md)** - API implementation verification
 - **[docs/DEBUG_LOGGING_DOCUMENTATION.md](./docs/DEBUG_LOGGING_DOCUMENTATION.md)** - Debug logging guide
-- **[docs/REFACTORING_SUMMARY.md](./docs/REFACTORING_SUMMARY.md)** - Refactoring decisions and improvements
 - **[docs/prompt.md](./docs/prompt.md)** - AI summary prompt template (loaded at runtime for LLM API calls)
 
 ## 📝 Learn More
