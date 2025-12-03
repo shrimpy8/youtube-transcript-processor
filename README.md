@@ -9,11 +9,17 @@ A Next.js application for extracting, processing, and exporting YouTube podcast 
 
 ## 📸 Screenshots
 
-See the application in action:
+### Main Interface
+![Main Interface](./screenshots/1_YouTube_Podcast_Transcript_Processor.png)
+*Main application interface with URL input and processing options*
 
-- **[Main Interface](./screenshots/1_YouTube_Podcast_Transcript_Processor.png)** - Main application interface with URL input and processing options
-- **[AI Summary](./screenshots/2_YouTube_Podcast_AI_Summary.png)** - AI-powered summary generation from multiple LLM providers
-- **[Transcript Viewer](./screenshots/3_YouTube_Podcast_Transcript.png)** - Interactive transcript viewer with search and export options
+### AI Summary
+![AI Summary](./screenshots/2_YouTube_Podcast_AI_Summary.png)
+*AI-powered summary generation from multiple LLM providers*
+
+### Transcript Viewer
+![Transcript Viewer](./screenshots/3_YouTube_Podcast_Transcript.png)
+*Interactive transcript viewer with search and export options*
 
 ## 🤖 AI Summary Examples
 
