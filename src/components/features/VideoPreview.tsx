@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Loader2, ExternalLink } from 'lucide-react'
+import { Loader2, ExternalLink, Play, Sparkles, User, ListVideo, RotateCcw } from 'lucide-react'
 import Image from 'next/image'
 import { ChannelDetails } from './ChannelDetails'
 import { PlaylistDetails } from './PlaylistDetails'
@@ -146,10 +146,10 @@ export function VideoPreview({
       <CardContent>
         <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
           <TabsList className={`grid w-full ${gridClass}`}>
-            <TabsTrigger value="video">Video</TabsTrigger>
-            {transcript && <TabsTrigger value="ai-summary">AI Summary</TabsTrigger>}
-            {showChannelTab && <TabsTrigger value="channel">Channel</TabsTrigger>}
-            {showPlaylistTab && <TabsTrigger value="playlist">Playlist</TabsTrigger>}
+            <TabsTrigger value="video"><Play className="h-4 w-4" />Video</TabsTrigger>
+            {transcript && <TabsTrigger value="ai-summary"><Sparkles className="h-4 w-4" />AI Summary</TabsTrigger>}
+            {showChannelTab && <TabsTrigger value="channel"><User className="h-4 w-4" />Channel</TabsTrigger>}
+            {showPlaylistTab && <TabsTrigger value="playlist"><ListVideo className="h-4 w-4" />Playlist</TabsTrigger>}
           </TabsList>
           
           {/* Video Tab - shows preview and transcript */}
@@ -221,12 +221,14 @@ export function VideoPreview({
                     {/* Re-process Button */}
                     {onReProcess && (
                       <div className="flex justify-center">
-                        <button
+                        <Button
+                          variant="ghost"
+                          size="sm"
                           onClick={onReProcess}
-                          className="text-sm text-muted-foreground hover:text-foreground underline"
                         >
+                          <RotateCcw className="h-3.5 w-3.5" />
                           Re-process with current options
-                        </button>
+                        </Button>
                       </div>
                     )}
                   </div>

@@ -118,3 +118,15 @@ export function getProviderModelName(provider: LLMProviderKey): string {
   return getEnvVar(config.modelNameEnv, config.defaultModelName)
 }
 
+/**
+ * Returns a record indicating which providers have API keys configured
+ * Values are booleans only — no key material is exposed
+ */
+export function getConfiguredProviders(): Record<LLMProviderKey, boolean> {
+  const result = {} as Record<LLMProviderKey, boolean>
+  for (const provider of ALL_PROVIDERS) {
+    result[provider] = !!getProviderApiKey(provider)
+  }
+  return result
+}
+

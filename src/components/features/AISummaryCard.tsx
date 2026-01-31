@@ -6,7 +6,7 @@ import remarkGfm from 'remark-gfm'
 import { AISummaryResponse, SummaryStyle } from '@/types'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Copy, Download, Check, AlertCircle, FileText, Loader2 } from 'lucide-react'
+import { Copy, Download, Check, AlertCircle, FileText, Loader2, RotateCcw } from 'lucide-react'
 import { copyToClipboard } from '@/lib/clipboard-utils'
 import { downloadAISummary } from '@/lib/export-utils'
 
@@ -32,6 +32,8 @@ interface AISummaryCardProps {
   copiedProvider: string | null
   /** Callback function when copy button is clicked */
   onCopy: (provider: string) => void
+  /** Optional callback to retry generation after an error */
+  onRetry?: () => void
 }
 
 /**
@@ -58,8 +60,10 @@ export function AISummaryCard({
   summaryStyle,
   copiedProvider,
   onCopy,
+  onRetry,
 }: AISummaryCardProps) {
   const [pdfLoading, setPdfLoading] = useState(false)
+  const [pdfDone, setPdfDone] = useState(false)
 
   // Don't render if no summary and no error
   if (!summary && !hasError) {
@@ -107,6 +111,8 @@ export function AISummaryCard({
         summary: summary.summary,
         videoTitle,
       })
+      setPdfDone(true)
+      setTimeout(() => setPdfDone(false), 2000)
     } catch (error) {
       console.error('Failed to export PDF:', error)
     } finally {
@@ -152,12 +158,14 @@ export function AISummaryCard({
                 onClick={handlePdfExport}
                 disabled={pdfLoading}
               >
-                {pdfLoading ? (
+                {pdfDone ? (
+                  <Check className="mr-2 h-4 w-4" />
+                ) : pdfLoading ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : (
                   <FileText className="mr-2 h-4 w-4" />
                 )}
-                PDF
+                {pdfDone ? 'Downloaded!' : 'PDF'}
               </Button>
             </div>
           )}
@@ -236,11 +244,22 @@ export function AISummaryCard({
         ) : (
           <div className="flex items-start gap-3 rounded-lg bg-destructive/10 p-4">
             <AlertCircle className="h-5 w-5 text-destructive flex-shrink-0 mt-0.5" />
-            <div>
+            <div className="flex-1">
               <p className="font-medium text-destructive">Error</p>
               <p className="text-sm text-muted-foreground mt-1">
                 {error || 'Failed to generate summary'}
               </p>
+              {onRetry && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={onRetry}
+                  className="mt-3"
+                >
+                  <RotateCcw className="mr-2 h-3.5 w-3.5" />
+                  Try Again
+                </Button>
+              )}
             </div>
           </div>
         )}
