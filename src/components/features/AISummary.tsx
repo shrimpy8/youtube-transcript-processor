@@ -51,9 +51,6 @@ export function AISummary({ transcript, videoTitle, videoUrl }: AISummaryProps) 
   const [copiedProvider, setCopiedProvider] = useState<string | null>(null)
   
   const {
-    summaries,
-    loading,
-    errors,
     hasGenerated,
     isLoading,
     generateSummary,
@@ -301,7 +298,7 @@ export function AISummary({ transcript, videoTitle, videoUrl }: AISummaryProps) 
         <Card>
           <CardContent className="py-12">
             <div className="text-center text-muted-foreground">
-              <p>Select a provider and click "Generate Summary" to create an AI-powered summary.</p>
+              <p>Select a provider and click &quot;Generate Summary&quot; to create an AI-powered summary.</p>
             </div>
           </CardContent>
         </Card>
