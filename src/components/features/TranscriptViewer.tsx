@@ -91,10 +91,9 @@ function SegmentDisplay({
             )}
           </div>
         )}
-        <p
-          className="text-base leading-relaxed"
-          dangerouslySetInnerHTML={{ __html: highlightedText }}
-        />
+        <p className="text-base leading-relaxed">
+          {highlightedText}
+        </p>
       </div>
     </div>
   )

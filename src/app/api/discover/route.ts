@@ -4,6 +4,10 @@ import { validateAndParseUrl } from '@/lib/youtube-validator'
 import { VideoMetadata, ChannelInfo } from '@/types'
 import { mapYtDlpError } from '@/lib/error-mapper'
 import { handleApiError, createSuccessResponse } from '@/lib/api-helpers'
+import { createRateLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limiter'
+
+/** Rate limiter: 10 requests per minute per IP */
+const limiter = createRateLimiter({ maxRequests: 10, windowMs: 60_000 })
 
 /**
  * POST /api/discover
@@ -11,6 +15,11 @@ import { handleApiError, createSuccessResponse } from '@/lib/api-helpers'
  */
 export async function POST(request: NextRequest) {
   try {
+    const clientIp = getClientIp(request)
+    if (!limiter.check(clientIp)) {
+      return rateLimitResponse()
+    }
+
     const body = await request.json()
     const { url, type, maxVideos = 100 } = body
 

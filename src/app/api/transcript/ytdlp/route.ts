@@ -5,6 +5,10 @@ import { mapYtDlpError } from '@/lib/error-mapper'
 import { handleApiError, createSuccessResponse } from '@/lib/api-helpers'
 import { formatUploadDate } from '@/lib/date-utils'
 import { NoTranscriptError } from '@/lib/errors'
+import { createRateLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limiter'
+
+/** Rate limiter: 20 requests per minute per IP */
+const limiter = createRateLimiter({ maxRequests: 20, windowMs: 60_000 })
 
 /**
  * POST /api/transcript/ytdlp
@@ -12,6 +16,11 @@ import { NoTranscriptError } from '@/lib/errors'
  */
 export async function POST(request: NextRequest) {
   try {
+    const clientIp = getClientIp(request)
+    if (!limiter.check(clientIp)) {
+      return rateLimitResponse()
+    }
+
     const body = await request.json()
     const { url, videoId, options } = body
 

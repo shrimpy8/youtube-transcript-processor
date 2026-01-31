@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useCallback } from 'react'
+import { useState, useMemo, useCallback, type ReactNode, createElement } from 'react'
 import { TranscriptSegment } from '@/types'
 
 export interface SearchMatch {
@@ -21,7 +21,7 @@ export interface UseTranscriptSearchReturn {
   nextMatch: () => void
   previousMatch: () => void
   clearSearch: () => void
-  highlightText: (text: string, segmentIndex: number) => string
+  highlightText: (text: string, segmentIndex: number) => ReactNode
 }
 
 /**
@@ -78,12 +78,24 @@ export function useTranscriptSearch(
   }, [])
 
   const highlightText = useCallback(
-    (text: string, segmentIndex: number): string => {
+    (text: string, segmentIndex: number): ReactNode => {
       if (!query.trim()) return text
 
       const searchQuery = query
       const regex = new RegExp(`(${escapeRegex(searchQuery)})`, 'gi')
-      return text.replace(regex, '<mark class="bg-yellow-200 dark:bg-yellow-900">$1</mark>')
+      const parts = text.split(regex)
+
+      if (parts.length === 1) return text
+
+      return createElement(
+        'span',
+        null,
+        ...parts.map((part, i) =>
+          regex.test(part)
+            ? createElement('mark', { key: i, className: 'bg-yellow-200 dark:bg-yellow-900' }, part)
+            : part
+        )
+      )
     },
     [query]
   )

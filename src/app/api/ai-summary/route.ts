@@ -1,46 +1,21 @@
-import { NextRequest } from 'next/server'
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { AISummaryRequest, AISummaryResponse, SummaryStyle } from '@/types'
-import { 
-  generateSummaryForProvider, 
+import {
+  generateSummaryForProvider,
   generateAllSummaries,
   loadPromptTemplate
 } from '@/lib/llm-service'
 import { handleApiError, createSuccessResponse } from '@/lib/api-helpers'
 import { createLogger } from '@/lib/logger'
+import { createRateLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limiter'
 
 /**
  * Logger instance for AI summary API route
  */
 const logger = createLogger('ai-summary-api')
 
-/**
- * Simple in-memory rate limiter per IP
- * Limits requests to MAX_REQUESTS within WINDOW_MS per client IP.
- * Suitable for single-instance deployments (Vercel serverless functions
- * share module-level state within a warm instance).
- */
-const RATE_LIMIT_WINDOW_MS = 60_000 // 1 minute
-const RATE_LIMIT_MAX_REQUESTS = 10  // max 10 requests per minute per IP
-
-const rateLimitMap = new Map<string, { count: number; resetAt: number }>()
-
-function checkRateLimit(ip: string): boolean {
-  const now = Date.now()
-  const entry = rateLimitMap.get(ip)
-
-  if (!entry || now > entry.resetAt) {
-    rateLimitMap.set(ip, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS })
-    return true
-  }
-
-  if (entry.count >= RATE_LIMIT_MAX_REQUESTS) {
-    return false
-  }
-
-  entry.count++
-  return true
-}
+/** Rate limiter: 10 requests per minute per IP */
+const limiter = createRateLimiter({ maxRequests: 10, windowMs: 60_000 })
 
 /**
  * POST /api/ai-summary
@@ -53,19 +28,10 @@ function checkRateLimit(ip: string): boolean {
 export async function POST(request: NextRequest) {
   try {
     // Rate limit by client IP
-    const clientIp = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
-      || request.headers.get('x-real-ip')
-      || 'unknown'
-
-    if (!checkRateLimit(clientIp)) {
+    const clientIp = getClientIp(request)
+    if (!limiter.check(clientIp)) {
       logger.warn('Rate limit exceeded', { clientIp })
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'Too many requests. Please wait a moment before generating another summary.',
-        },
-        { status: 429 }
-      )
+      return rateLimitResponse()
     }
 
     logger.debug('Received AI summary request')

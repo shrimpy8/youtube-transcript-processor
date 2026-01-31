@@ -36,6 +36,46 @@ const STYLE_PROMPT_FILES: Record<SummaryStyle, string> = {
 }
 
 /**
+ * Common refusal/error patterns that indicate the LLM did not process the transcript.
+ * Shared across all providers.
+ */
+const REFUSAL_PATTERNS = [
+  /you haven't.*provided.*transcript/i,
+  /I need.*transcript/i,
+  /please (share|provide).*transcript/i,
+  /I appreciate your.*setup.*but/i,
+  /I don't have.*transcript/i,
+  /no transcript.*provided/i,
+]
+
+/**
+ * Validates LLM output content.
+ * Throws if the content looks like a refusal or is suspiciously short.
+ *
+ * @param content - The raw text returned by the LLM
+ * @param providerName - Provider name for error messages
+ */
+function validateLLMOutput(content: string, providerName: string): void {
+  // Check for refusal patterns
+  const isRefusal = REFUSAL_PATTERNS.some(pattern => pattern.test(content))
+  if (isRefusal) {
+    logger.warn(`${providerName} returned a refusal response, will retry`, {
+      contentPreview: content.substring(0, 200),
+    })
+    throw new Error(`${providerName} did not process the transcript. Please try again.`)
+  }
+
+  // Check for suspiciously short output (likely an error or non-summary)
+  if (content.trim().length < 50) {
+    logger.warn(`${providerName} returned suspiciously short output, will retry`, {
+      contentLength: content.trim().length,
+      contentPreview: content.substring(0, 200),
+    })
+    throw new Error(`${providerName} returned an incomplete response. Retrying...`)
+  }
+}
+
+/**
  * Loads the prompt template for the given summary style
  * For bullets style, appends the video URL so the LLM can generate timestamp links
  *
@@ -171,7 +211,7 @@ export async function generateAnthropicSummary(
   // Validate API key format (Anthropic keys typically start with 'sk-ant-')
   if (!apiKey.startsWith('sk-ant-')) {
     logger.warn('Anthropic API key format may be invalid', {
-      apiKeyPrefix: apiKey.substring(0, 10) + '...',
+      apiKeyPrefix: apiKey.substring(0, 6) + '***',
       expectedPrefix: 'sk-ant-'
     })
   }
@@ -217,7 +257,7 @@ export async function generateAnthropicSummary(
 
     const data = await response.json()
     const content = data.content?.[0]?.text
-    
+
     if (!content) {
       logger.error('No content in Anthropic API response', undefined, {
         responseKeys: Object.keys(data),
@@ -226,6 +266,8 @@ export async function generateAnthropicSummary(
       })
       throw new Error('No content returned from Anthropic API')
     }
+
+    validateLLMOutput(content, 'Anthropic')
 
     logger.info('Anthropic summary generated successfully', {
       contentLength: content.length,
@@ -308,7 +350,7 @@ export async function generateGeminiSummary(
 
     const data = await response.json()
     const content = data.candidates?.[0]?.content?.parts?.[0]?.text
-    
+
     if (!content) {
       logger.error('No content in Gemini API response', undefined, {
         responseKeys: Object.keys(data),
@@ -317,6 +359,8 @@ export async function generateGeminiSummary(
       })
       throw new Error('No content returned from Gemini API')
     }
+
+    validateLLMOutput(content, 'Gemini')
 
     logger.info('Gemini summary generated successfully', {
       contentLength: content.length,
@@ -404,20 +448,8 @@ export async function generatePerplexitySummary(
       throw new Error('No content returned from Perplexity API')
     }
 
-    // Detect refusal/confused responses where Perplexity ignores the transcript
-    const refusalPatterns = [
-      /you haven't.*provided.*transcript/i,
-      /I need.*transcript/i,
-      /please (share|provide).*transcript/i,
-      /I appreciate your.*setup.*but/i,
-    ]
-    const isRefusal = refusalPatterns.some(pattern => pattern.test(content))
-    if (isRefusal) {
-      logger.warn('Perplexity returned a refusal response, will retry', {
-        contentPreview: content.substring(0, 200)
-      })
-      throw new Error('Perplexity did not process the transcript. Please try again.')
-    }
+    // Shared refusal + length validation
+    validateLLMOutput(content, 'Perplexity')
 
     // Detect incomplete Technical responses (missing required sections)
     const isTechnicalPrompt = promptTemplate.includes('### 1. Tools & Technologies')

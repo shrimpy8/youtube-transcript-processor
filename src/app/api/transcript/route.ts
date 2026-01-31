@@ -3,6 +3,10 @@ import { YoutubeTranscript } from 'youtube-transcript'
 import { validateAndParseUrl } from '@/lib/youtube-validator'
 import { NoTranscriptError, VideoNotFoundError, NetworkError, RateLimitError } from '@/lib/errors'
 import { TranscriptSegment } from '@/types'
+import { createRateLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limiter'
+
+/** Rate limiter: 20 requests per minute per IP */
+const limiter = createRateLimiter({ maxRequests: 20, windowMs: 60_000 })
 
 /**
  * POST /api/transcript
@@ -10,6 +14,11 @@ import { TranscriptSegment } from '@/types'
  */
 export async function POST(request: NextRequest) {
   try {
+    const clientIp = getClientIp(request)
+    if (!limiter.check(clientIp)) {
+      return rateLimitResponse()
+    }
+
     const body = await request.json()
     const { url, videoId } = body
 
@@ -145,13 +154,12 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Unknown error
+    // Unknown error — log details server-side, return generic message to client
     console.error('Transcript fetch error:', error)
     return NextResponse.json(
-      { 
+      {
         error: 'Failed to fetch transcript',
         type: 'UNKNOWN',
-        message: error instanceof Error ? error.message : 'An unexpected error occurred',
       },
       { status: 500 }
     )
