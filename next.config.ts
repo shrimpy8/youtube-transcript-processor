@@ -27,6 +27,42 @@ const nextConfig: NextConfig = {
   experimental: {
     optimizePackageImports: ['lucide-react', '@radix-ui/react-dropdown-menu'],
   },
+  // Security headers
+  async headers() {
+    return [
+      {
+        source: '/(.*)',
+        headers: [
+          {
+            key: 'Content-Security-Policy',
+            value: [
+              "default-src 'self'",
+              "script-src 'self' 'unsafe-eval' 'unsafe-inline'",
+              "style-src 'self' 'unsafe-inline'",
+              "img-src 'self' data: https://img.youtube.com https://i.ytimg.com",
+              "font-src 'self'",
+              "connect-src 'self' https://api.anthropic.com https://generativelanguage.googleapis.com https://api.perplexity.ai",
+              "frame-ancestors 'none'",
+              "base-uri 'self'",
+              "form-action 'self'",
+            ].join('; '),
+          },
+          {
+            key: 'X-Frame-Options',
+            value: 'DENY',
+          },
+          {
+            key: 'X-Content-Type-Options',
+            value: 'nosniff',
+          },
+          {
+            key: 'Referrer-Policy',
+            value: 'strict-origin-when-cross-origin',
+          },
+        ],
+      },
+    ]
+  },
   // Webpack optimizations
   webpack: (config, { isServer }) => {
     if (!isServer) {
