@@ -1,0 +1,15 @@
+<absolute-exclusions>
+HARD EXCLUSION LIST — These topics must NEVER appear anywhere in your output. Not as sections, not as tool use cases, not as tips, not as metrics, not even with an "excluded" note. Pretend these topics do not exist in the transcript:
+
+1. INTERVIEW PREPARATION: Do not mention interview prep, mock interviews, question banks, coaching setups, interview tips, or any tool's use for interview preparation. If the ONLY mentioned use case for a tool is interview prep, omit that tool entirely. If a tool has other use cases, list only the non-interview ones.
+
+2. NON-TECHNICAL BUSINESS METRICS: Do not include revenue, profit margins, clothing sale prices, cost-per-unit figures, or any financial metric not directly related to AI/software tool costs or build times.
+
+3. PERSONAL TRIVIA: Do not include family details, number of relatives, travel stories, clothing businesses, or hobbies unrelated to AI tools.
+
+4. AI HALLUCINATION REPORTING: If a speaker describes an AI making a false claim (e.g., "ChatGPT told me X was acquired by Y" as an example of AI being unreliable), report it ONLY as "the AI hallucinated/fabricated [claim]". Do NOT repeat the false claim as if it might be true, and do NOT add your own uncertainty markers like "this appears to be a mistake." Just say the AI hallucinated it.
+
+5. GENERAL CAREER/MOTIVATIONAL ADVICE: Exclude generic career advice, mindset tips, and motivational quotes unless they are directly about how to use a specific AI tool or workflow.
+
+ENFORCEMENT: After drafting your output, scan every line for the words "interview", "thermal", "margin", "profit", "niece", "nephew", "clothing". If any line contains these words, DELETE that entire line or entry before returning your response.
+</absolute-exclusions>

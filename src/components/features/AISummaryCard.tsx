@@ -1,9 +1,12 @@
 'use client'
 
-import { AISummaryResponse } from '@/types'
+import { useState } from 'react'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
+import { AISummaryResponse, SummaryStyle } from '@/types'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Copy, Download, Check, AlertCircle } from 'lucide-react'
+import { Copy, Download, Check, AlertCircle, FileText, Loader2 } from 'lucide-react'
 import { copyToClipboard } from '@/lib/clipboard-utils'
 import { downloadAISummary } from '@/lib/export-utils'
 
@@ -23,6 +26,8 @@ interface AISummaryCardProps {
   providerKey: string
   /** Optional video title for download filename */
   videoTitle?: string
+  /** Summary style used for generation */
+  summaryStyle?: SummaryStyle
   /** Currently copied provider key (for showing "Copied!" state) */
   copiedProvider: string | null
   /** Callback function when copy button is clicked */
@@ -50,9 +55,12 @@ export function AISummaryCard({
   providerLabel,
   providerKey,
   videoTitle,
+  summaryStyle,
   copiedProvider,
   onCopy,
 }: AISummaryCardProps) {
+  const [pdfLoading, setPdfLoading] = useState(false)
+
   // Don't render if no summary and no error
   if (!summary && !hasError) {
     return null
@@ -78,7 +86,31 @@ export function AISummaryCard({
    */
   const handleDownload = () => {
     if (summary?.summary && summary?.modelName) {
-      downloadAISummary(summary.summary, summary.modelName, videoTitle)
+      downloadAISummary(summary.summary, summary.modelName, videoTitle, summaryStyle)
+    }
+  }
+
+  /**
+   * Handles PDF export - dynamically imports pdf-export and generates PDF
+   */
+  const handlePdfExport = async () => {
+    if (!summary?.summary || !summary?.modelName) return
+
+    setPdfLoading(true)
+    try {
+      const { generateSummaryPdf } = await import('@/lib/pdf-export')
+      await generateSummaryPdf({
+        title: videoTitle || 'AI Summary',
+        provider: summary.modelName,
+        summaryStyle: summaryStyle || 'bullets',
+        date: new Date().toISOString().split('T')[0],
+        summary: summary.summary,
+        videoTitle,
+      })
+    } catch (error) {
+      console.error('Failed to export PDF:', error)
+    } finally {
+      setPdfLoading(false)
     }
   }
 
@@ -112,7 +144,20 @@ export function AISummaryCard({
                 onClick={handleDownload}
               >
                 <Download className="mr-2 h-4 w-4" />
-                Download
+                TXT
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handlePdfExport}
+                disabled={pdfLoading}
+              >
+                {pdfLoading ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <FileText className="mr-2 h-4 w-4" />
+                )}
+                PDF
               </Button>
             </div>
           )}
@@ -120,10 +165,73 @@ export function AISummaryCard({
       </CardHeader>
       <CardContent>
         {summary && summary.success ? (
-          <div className="prose prose-sm max-w-none dark:prose-invert">
-            <div className="whitespace-pre-wrap text-sm leading-relaxed">
+          <div className="max-w-none text-sm leading-relaxed">
+            <ReactMarkdown
+              remarkPlugins={[remarkGfm]}
+              components={{
+                ul: ({ children }) => (
+                  <ul className="list-disc pl-5 space-y-3">
+                    {children}
+                  </ul>
+                ),
+                ol: ({ children }) => (
+                  <ol className="list-decimal pl-5 space-y-3">
+                    {children}
+                  </ol>
+                ),
+                li: ({ children }) => (
+                  <li className="pl-1">
+                    {children}
+                  </li>
+                ),
+                p: ({ children }) => (
+                  <p className="mb-3 last:mb-0">
+                    {children}
+                  </p>
+                ),
+                h1: ({ children }) => (
+                  <h1 className="text-xl font-bold mt-4 mb-2">{children}</h1>
+                ),
+                h2: ({ children }) => (
+                  <h2 className="text-lg font-semibold mt-3 mb-2">{children}</h2>
+                ),
+                h3: ({ children }) => (
+                  <h3 className="text-base font-semibold mt-3 mb-1">{children}</h3>
+                ),
+                strong: ({ children }) => (
+                  <strong className="font-semibold">{children}</strong>
+                ),
+                a: ({ href, children }) => (
+                  <a href={href} target="_blank" rel="noopener noreferrer" className="text-primary underline hover:text-primary/80">
+                    {children}
+                  </a>
+                ),
+                table: ({ children }) => (
+                  <div className="overflow-x-auto my-3">
+                    <table className="min-w-full border-collapse border border-border text-sm">
+                      {children}
+                    </table>
+                  </div>
+                ),
+                th: ({ children }) => (
+                  <th className="border border-border bg-muted px-3 py-1.5 text-left font-medium">
+                    {children}
+                  </th>
+                ),
+                td: ({ children }) => (
+                  <td className="border border-border px-3 py-1.5">
+                    {children}
+                  </td>
+                ),
+                code: ({ children }) => (
+                  <code className="rounded bg-muted px-1.5 py-0.5 text-xs font-mono">
+                    {children}
+                  </code>
+                ),
+              }}
+            >
               {summary.summary}
-            </div>
+            </ReactMarkdown>
           </div>
         ) : (
           <div className="flex items-start gap-3 rounded-lg bg-destructive/10 p-4">

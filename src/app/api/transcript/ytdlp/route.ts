@@ -1,4 +1,4 @@
-import { NextRequest } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { downloadSubtitles, extractVideoIdFromUrl, getVideoInfo } from '@/lib/ytdlp-service'
 import { validateAndParseUrl } from '@/lib/youtube-validator'
 import { mapYtDlpError } from '@/lib/error-mapper'

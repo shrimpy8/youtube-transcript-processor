@@ -99,21 +99,24 @@ export async function exportAndDownload(
  * @param summary - Summary text content
  * @param provider - LLM provider name (e.g., "Anthropic Sonnet 4.5")
  * @param videoTitle - Optional video title for filename
+ * @param summaryStyle - Optional summary style for filename
  */
 export function downloadAISummary(
   summary: string,
   provider: string,
-  videoTitle?: string
+  videoTitle?: string,
+  summaryStyle?: string
 ): void {
   const timestamp = new Date().toISOString().split('T')[0] // YYYY-MM-DD
   const sanitizedProvider = provider.replace(/[^a-z0-9]/gi, '_').toLowerCase()
-  
+  const styleSuffix = summaryStyle ? `_${summaryStyle}` : ''
+
   let baseName = 'ai-summary'
   if (videoTitle) {
     baseName = sanitizeFilename(videoTitle, 30)
   }
-  
-  const filename = `${baseName}_${sanitizedProvider}_${timestamp}.txt`
+
+  const filename = `${baseName}_${sanitizedProvider}${styleSuffix}_${timestamp}.txt`
   const blob = createDownloadBlob(summary, 'text/plain')
   triggerDownload(blob, filename)
 }

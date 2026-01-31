@@ -1,4 +1,4 @@
-import { TranscriptSegment, ChannelInfo, ChannelDetails, VideoMetadata, LLMProvider, AISummaryResponse } from '@/types'
+import { TranscriptSegment, ChannelInfo, ChannelDetails, VideoMetadata, LLMProvider, AISummaryResponse, SummaryStyle } from '@/types'
 import { AppError, ErrorType, NoTranscriptError, VideoNotFoundError, NetworkError, RateLimitError } from './errors'
 import { extractErrorMessage } from './utils'
 
@@ -98,7 +98,7 @@ export async function fetchTranscriptWithYtDlp(
     const data: TranscriptResponse = await response.json()
 
     if (!response.ok) {
-      handleHttpError(response, data, {
+      return handleHttpError(response, data, {
         videoId,
         defaultError: 'Failed to fetch transcript'
       })
@@ -106,7 +106,7 @@ export async function fetchTranscriptWithYtDlp(
 
     return data
   } catch (error) {
-    handleFetchError(error)
+    return handleFetchError(error)
   }
 }
 
@@ -167,14 +167,14 @@ export async function discoverVideos(
     const data: DiscoverResponse = await response.json()
 
     if (!response.ok) {
-      handleHttpError(response, data, {
-        defaultError: 'Failed to discover videos'
-      })
+      const errorMessage = data.error || 'Failed to discover videos'
+      throw new AppError(ErrorType.UNKNOWN, errorMessage)
     }
 
     return data
   } catch (error) {
-    handleFetchError(error)
+    if (error instanceof AppError) throw error
+    throw new AppError(ErrorType.UNKNOWN, extractErrorMessage(error, 'Failed to discover videos'))
   }
 }
 
@@ -220,14 +220,14 @@ export async function fetchChannelInfoFromVideo(
       const data: ChannelInfoResponse = await response.json()
 
       if (!response.ok) {
-        handleHttpError(response, data, {
-          defaultError: 'Failed to fetch channel information'
-        })
+        const errorMessage = data.error || 'Failed to fetch channel information'
+        throw new AppError(ErrorType.UNKNOWN, errorMessage)
       }
 
       return data
     } catch (error) {
-      handleFetchError(error)
+      if (error instanceof AppError) throw error
+      throw new AppError(ErrorType.UNKNOWN, extractErrorMessage(error, 'Failed to fetch channel information'))
     } finally {
       // Remove from in-flight requests when done
       inFlightRequests.delete(videoUrl)
@@ -253,11 +253,15 @@ export interface AISummaryApiResponse {
  * Generates AI summary from transcript using selected LLM provider(s)
  * @param transcript - Full transcript text
  * @param provider - LLM provider to use ('anthropic', 'google-gemini', 'perplexity', or 'all')
+ * @param summaryStyle - Summary style ('bullets', 'narrative', or 'technical'). Defaults to 'bullets'
+ * @param videoUrl - YouTube video URL for timestamp links (used only for bullets style)
  * @returns Array of summary responses (one per provider)
  */
 export async function generateAISummary(
   transcript: string,
-  provider: LLMProvider
+  provider: LLMProvider,
+  summaryStyle: SummaryStyle = 'bullets',
+  videoUrl?: string
 ): Promise<AISummaryResponse[]> {
   try {
     const response = await fetch('/api/ai-summary', {
@@ -268,6 +272,8 @@ export async function generateAISummary(
       body: JSON.stringify({
         transcript,
         provider,
+        summaryStyle,
+        videoUrl,
       }),
     })
 
@@ -288,7 +294,8 @@ export async function generateAISummary(
 
     return data.summaries
   } catch (error) {
-    handleFetchError(error)
+    if (error instanceof AppError) throw error
+    throw new AppError(ErrorType.UNKNOWN, extractErrorMessage(error, 'Failed to generate AI summary'))
   }
 }
 

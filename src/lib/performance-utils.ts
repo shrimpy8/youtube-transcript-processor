@@ -219,7 +219,7 @@ export function requestIdleCallback(
 
   // Fallback for browsers without requestIdleCallback
   const timeout = options?.timeout || 0
-  return window.setTimeout(callback, timeout) as unknown as number
+  return (window as unknown as Window).setTimeout(callback, timeout) as unknown as number
 }
 
 /**

@@ -263,6 +263,7 @@ export default function Home() {
                 {/* Processing Status */}
                 {transcriptProcessing.state === 'processing' && (
                   <ProcessingStatus
+                    state="processing"
                     progress={transcriptProcessing.progress}
                     onCancel={transcriptProcessing.cancel}
                   />

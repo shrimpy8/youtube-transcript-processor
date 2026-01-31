@@ -215,14 +215,14 @@ export async function downloadSubtitles(
     })
     return segments
   } catch (error) {
-    logger.error('Subtitle download failed', error, { 
-      videoUrl, 
+    logger.error('Subtitle download failed', error, {
+      videoUrl,
       options,
       duration: timer.elapsedMs(),
     })
-    
+
     // Extract video ID for error context
-    const videoIdMatch = fullUrl.match(/(?:v=|\/)([a-zA-Z0-9_-]{11})/)
+    const videoIdMatch = videoUrl.match(/(?:v=|\/)([a-zA-Z0-9_-]{11})/)
     const videoId = videoIdMatch ? videoIdMatch[1] : 'unknown'
     
     // Map yt-dlp errors using error mapper
@@ -281,13 +281,13 @@ export async function getVideoInfo(videoUrl: string): Promise<YtDlpVideoInfo> {
       throw new Error('Invalid JSON response from yt-dlp')
     }
 
-    const videoInfo = {
+    const videoInfo: YtDlpVideoInfo = {
       id: info.id || '',
       title: info.title || 'Unknown',
       url: fullUrl,
       duration: info.duration || undefined,
-      thumbnail: info.thumbnail || info.thumbnails?.[0]?.url,
-      channel: info.channel || info.uploader,
+      thumbnail: info.thumbnail || (info.thumbnails as Array<{ url?: string }> | undefined)?.[0]?.url,
+      channel: (info.channel || info.uploader) as string | undefined,
       description: info.description,
       upload_date: info.upload_date,
     }
@@ -590,9 +590,9 @@ export async function getChannelInfoFromVideo(videoUrl: string): Promise<{
     })
     
     // Extract channel information with fallbacks
-    const channelName = info.channel || info.uploader || info.channel_name
-    const channelId = info.channel_id || info.channelId
-    const uploaderId = info.uploader_id // This is usually the channel handle
+    const channelName = (info.channel || info.uploader || info.channel_name) as string | undefined
+    const channelId = (info.channel_id || info.channelId) as string | undefined
+    const uploaderId = info.uploader_id as string | undefined // This is usually the channel handle
     
     logger.debug('Processed channel information', {
       channelName,

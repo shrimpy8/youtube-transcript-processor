@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server'
 import { NextResponse } from 'next/server'
-import { LLMProvider, AISummaryRequest, AISummaryResponse } from '@/types'
+import { LLMProvider, AISummaryRequest, AISummaryResponse, SummaryStyle } from '@/types'
 import { 
   generateSummaryForProvider, 
   generateAllSummaries,
@@ -27,10 +27,17 @@ export async function POST(request: NextRequest) {
     logger.debug('Received AI summary request')
     
     const body: AISummaryRequest = await request.json()
-    const { transcript, provider } = body
+    const { transcript, provider, summaryStyle, videoUrl } = body
+
+    // Default to 'bullets' for backward compatibility
+    const style: SummaryStyle = summaryStyle && ['bullets', 'narrative', 'technical'].includes(summaryStyle)
+      ? summaryStyle
+      : 'bullets'
 
     logger.debug('Parsed request body', {
       provider,
+      summaryStyle: style,
+      hasVideoUrl: !!videoUrl,
       transcriptLength: transcript?.length,
       hasTranscript: !!transcript
     })
@@ -79,13 +86,15 @@ export async function POST(request: NextRequest) {
 
     logger.info('Starting summary generation', {
       provider,
+      summaryStyle: style,
       transcriptLength: transcript.length
     })
 
-    // Load prompt template once
-    const promptTemplate = await loadPromptTemplate()
+    // Load style-specific prompt template
+    const promptTemplate = await loadPromptTemplate(style, videoUrl)
     logger.debug('Prompt template loaded', {
-      templateLength: promptTemplate.length
+      templateLength: promptTemplate.length,
+      style,
     })
 
     let summaries: AISummaryResponse[]

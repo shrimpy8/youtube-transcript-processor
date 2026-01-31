@@ -1,16 +1,17 @@
 'use client'
 
 import { useState } from 'react'
-import { ProcessedTranscript } from '@/types'
+import { ProcessedTranscript, SummaryStyle } from '@/types'
 import { LLMProvider } from '@/types'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
-import { Loader2 } from 'lucide-react'
+import { Loader2, Info } from 'lucide-react'
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { useAISummary } from '@/hooks/useAISummary'
 import { AISummaryCard } from './AISummaryCard'
-import { transcriptToText, PROVIDER_LABELS, getAllProviders } from '@/lib/ai-summary-utils'
+import { transcriptToText, transcriptToTimestampedText, PROVIDER_LABELS, PROVIDER_SHORT_LABELS, getAllProviders } from '@/lib/ai-summary-utils'
 import { cn } from '@/lib/utils'
 
 /**
@@ -21,6 +22,8 @@ interface AISummaryProps {
   transcript: ProcessedTranscript | null
   /** Optional video title for download filenames */
   videoTitle?: string
+  /** YouTube video URL for timestamp links in bullets style */
+  videoUrl?: string
 }
 
 /**
@@ -42,8 +45,9 @@ interface AISummaryProps {
  * - Shows error messages for failed providers
  * - Allows copying and downloading individual summaries
  */
-export function AISummary({ transcript, videoTitle }: AISummaryProps) {
+export function AISummary({ transcript, videoTitle, videoUrl }: AISummaryProps) {
   const [selectedProvider, setSelectedProvider] = useState<LLMProvider>('anthropic')
+  const [selectedStyle, setSelectedStyle] = useState<SummaryStyle>('bullets')
   const [copiedProvider, setCopiedProvider] = useState<string | null>(null)
   
   const {
@@ -74,8 +78,11 @@ export function AISummary({ transcript, videoTitle }: AISummaryProps) {
   }
 
   const handleGenerate = async () => {
-    const transcriptText = transcriptToText(transcript)
-    await generateSummary(transcriptText, selectedProvider)
+    // Use timestamped text for bullets style, plain text for others
+    const transcriptText = selectedStyle === 'bullets'
+      ? transcriptToTimestampedText(transcript.segments)
+      : transcriptToText(transcript)
+    await generateSummary(transcriptText, selectedProvider, selectedStyle, videoUrl)
   }
 
   const handleCopy = (provider: string) => {
@@ -88,6 +95,12 @@ export function AISummary({ transcript, videoTitle }: AISummaryProps) {
     { value: 'google-gemini', label: PROVIDER_LABELS['google-gemini'] },
     { value: 'perplexity', label: PROVIDER_LABELS.perplexity },
     { value: 'all', label: PROVIDER_LABELS.all },
+  ]
+
+  const styleOptions: Array<{ value: SummaryStyle; label: string; description: string }> = [
+    { value: 'bullets', label: 'Bullets', description: '10-15 key points covering the full episode with timestamp links' },
+    { value: 'narrative', label: 'Narrative', description: 'Flowing prose paragraphs (750-1000 words)' },
+    { value: 'technical', label: 'Technical', description: 'Tools, workflows, tips, and metrics (up to 2000 words)' },
   ]
 
   const providers = getAllProviders()
@@ -129,6 +142,40 @@ export function AISummary({ transcript, videoTitle }: AISummaryProps) {
             </RadioGroup>
           </div>
 
+          <div className="space-y-3">
+            <Label>Summary Style</Label>
+            <div className="flex gap-2">
+              {styleOptions.map(option => (
+                <button
+                  key={option.value}
+                  type="button"
+                  onClick={() => setSelectedStyle(option.value)}
+                  disabled={isLoading}
+                  className={cn(
+                    "flex-1 rounded-md border px-3 py-2 text-sm font-medium transition-colors",
+                    "hover:bg-accent hover:text-accent-foreground",
+                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                    selectedStyle === option.value
+                      ? "border-primary bg-primary text-primary-foreground"
+                      : "border-input bg-background",
+                    isLoading && "cursor-not-allowed opacity-50"
+                  )}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {styleOptions.find(o => o.value === selectedStyle)?.description}
+            </p>
+            {selectedStyle === 'bullets' && videoUrl && (
+              <div className="flex items-center gap-1.5 text-xs text-blue-600 dark:text-blue-400">
+                <Info className="h-3 w-3" />
+                <span>Includes video timestamp links</span>
+              </div>
+            )}
+          </div>
+
           <div className="flex gap-2">
             <Button
               onClick={handleGenerate}
@@ -158,25 +205,51 @@ export function AISummary({ transcript, videoTitle }: AISummaryProps) {
         </CardContent>
       </Card>
 
-      {/* Loading States */}
-      {isLoading && (
+      {/* Loading & Results — Tabbed for "All", single card otherwise */}
+      {(isLoading || hasGenerated) && (
         <div className="space-y-4">
           {selectedProvider === 'all' ? (
-            providers.map(provider => (
-              isProviderLoading(provider) && (
-                <Card key={provider}>
-                  <CardContent className="py-6">
-                    <div className="flex items-center gap-3">
-                      <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-                      <span className="text-sm text-muted-foreground">
-                        Generating summary with {providerOptions.find(o => o.value === provider)?.label}...
-                      </span>
-                    </div>
-                  </CardContent>
-                </Card>
-              )
-            ))
-          ) : (
+            <Tabs defaultValue={providers[0]} className="w-full">
+              <TabsList className="grid w-full grid-cols-3">
+                {providers.map(provider => (
+                  <TabsTrigger key={provider} value={provider} className="text-xs sm:text-sm">
+                    {PROVIDER_SHORT_LABELS[provider]}
+                    {isProviderLoading(provider) && (
+                      <Loader2 className="ml-1.5 h-3 w-3 animate-spin" />
+                    )}
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+              {providers.map(provider => (
+                <TabsContent key={provider} value={provider}>
+                  {isProviderLoading(provider) ? (
+                    <Card>
+                      <CardContent className="py-12">
+                        <div className="flex items-center justify-center gap-3">
+                          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                          <span className="text-sm text-muted-foreground">
+                            Generating summary with {PROVIDER_LABELS[provider]}...
+                          </span>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ) : (
+                    <AISummaryCard
+                      summary={getSummaryForProvider(provider)}
+                      error={getError(provider)}
+                      hasError={hasError(provider)}
+                      providerLabel={PROVIDER_LABELS[provider]}
+                      providerKey={provider}
+                      videoTitle={videoTitle}
+                      summaryStyle={selectedStyle}
+                      copiedProvider={copiedProvider}
+                      onCopy={handleCopy}
+                    />
+                  )}
+                </TabsContent>
+              ))}
+            </Tabs>
+          ) : isLoading ? (
             <Card>
               <CardContent className="py-6">
                 <div className="flex items-center gap-3">
@@ -187,41 +260,18 @@ export function AISummary({ transcript, videoTitle }: AISummaryProps) {
                 </div>
               </CardContent>
             </Card>
-          )}
-        </div>
-      )}
-
-      {/* Summary Results */}
-      {hasGenerated && !isLoading && (
-        <div className="space-y-4">
-          {selectedProvider === 'all' ? (
-            // Show all summaries
-            providers.map(provider => (
-              <AISummaryCard
-                key={provider}
-                summary={getSummaryForProvider(provider)}
-                error={getError(provider)}
-                hasError={hasError(provider)}
-                providerLabel={PROVIDER_LABELS[provider]}
-                providerKey={provider}
-                videoTitle={videoTitle}
-                copiedProvider={copiedProvider}
-                onCopy={handleCopy}
-              />
-            ))
           ) : (
-            // Show single summary
             (() => {
               const summary = getSummaryForProvider(selectedProvider)
               const error = getError(selectedProvider)
               const hasErr = hasError(selectedProvider)
-              
+
               if (!summary && !hasErr) {
                 return (
                   <Card>
                     <CardContent className="py-12">
                       <div className="text-center text-muted-foreground">
-                        <p>No summary generated yet. Click "Generate Summary" to create one.</p>
+                        <p>No summary generated yet. Click &quot;Generate Summary&quot; to create one.</p>
                       </div>
                     </CardContent>
                   </Card>
@@ -236,6 +286,7 @@ export function AISummary({ transcript, videoTitle }: AISummaryProps) {
                   providerLabel={PROVIDER_LABELS[selectedProvider]}
                   providerKey={selectedProvider}
                   videoTitle={videoTitle}
+                  summaryStyle={selectedStyle}
                   copiedProvider={copiedProvider}
                   onCopy={handleCopy}
                 />
