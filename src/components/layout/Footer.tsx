@@ -11,6 +11,14 @@ export function Footer() {
           </p>
         </div>
         <div className="flex items-center gap-4 text-sm text-muted-foreground">
+          <a
+            href="/how-it-works.html"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hover:text-foreground transition-colors"
+          >
+            How It Works
+          </a>
           <span>© {new Date().getFullYear()} YouTube Transcript Processor</span>
         </div>
       </div>

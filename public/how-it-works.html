@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>How It Works - YouTube Podcast Transcript Processor</title>
+  <style>
+    :root {
+      --bg: #0a0a0a;
+      --surface: #141414;
+      --surface-hover: #1a1a1a;
+      --border: #2a2a2a;
+      --text: #e5e5e5;
+      --text-muted: #888;
+      --accent: #d97706;
+      --accent-soft: rgba(217, 119, 6, 0.1);
+      --blue: #3b82f6;
+      --blue-soft: rgba(59, 130, 246, 0.1);
+      --green: #22c55e;
+      --green-soft: rgba(34, 197, 94, 0.1);
+      --purple: #a855f7;
+      --purple-soft: rgba(168, 85, 247, 0.1);
+      --red: #ef4444;
+      --red-soft: rgba(239, 68, 68, 0.1);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      padding: 2rem;
+      max-width: 960px;
+      margin: 0 auto;
+    }
+
+    header {
+      margin-bottom: 2.5rem;
+      padding-bottom: 1.5rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .back-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 0.875rem;
+      margin-bottom: 1rem;
+      transition: color 0.2s;
+    }
+
+    .back-link:hover { color: var(--accent); }
+
+    h1 { font-size: 1.75rem; font-weight: 600; margin-bottom: 0.5rem; }
+    h2 { font-size: 1.25rem; font-weight: 600; margin-bottom: 1rem; }
+    h3 { font-size: 1rem; font-weight: 600; margin-bottom: 0.5rem; }
+
+    header p { color: var(--text-muted); font-size: 0.95rem; }
+
+    /* Flow Diagram */
+    .flow {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      align-items: center;
+      justify-content: center;
+      margin: 2rem 0;
+    }
+
+    .flow-step {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.75rem 1.25rem;
+      text-align: center;
+      min-width: 140px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .flow-step:hover {
+      border-color: var(--accent);
+      background: var(--surface-hover);
+    }
+
+    .flow-step .step-icon { font-size: 1.5rem; margin-bottom: 0.25rem; }
+    .flow-step .step-label { font-size: 0.85rem; font-weight: 500; }
+
+    .flow-arrow {
+      color: var(--text-muted);
+      font-size: 1.25rem;
+      flex-shrink: 0;
+    }
+
+    /* Sections */
+    .section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      margin-bottom: 1rem;
+      overflow: hidden;
+    }
+
+    .section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1rem 1.25rem;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .section-header:hover { background: var(--surface-hover); }
+
+    .section-title {
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .section-title .icon { font-size: 1.1rem; }
+
+    .section-chevron {
+      color: var(--text-muted);
+      transition: transform 0.2s;
+      font-size: 0.875rem;
+    }
+
+    .section.open .section-chevron { transform: rotate(180deg); }
+
+    .section-content {
+      padding: 0 1.25rem 1.25rem;
+      display: none;
+    }
+
+    .section.open .section-content { display: block; }
+    .section.open .section-header { border-bottom: 1px solid var(--border); }
+
+    .section-content p {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .section-content p:last-child { margin-bottom: 0; }
+
+    /* Architecture Diagram */
+    .arch-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 1rem;
+      margin: 1rem 0;
+    }
+
+    .arch-layer {
+      border-radius: 8px;
+      padding: 1rem;
+      border: 1px solid;
+    }
+
+    .arch-layer.client { border-color: var(--blue); background: var(--blue-soft); }
+    .arch-layer.api { border-color: var(--accent); background: var(--accent-soft); }
+    .arch-layer.external { border-color: var(--purple); background: var(--purple-soft); }
+
+    .arch-layer h4 {
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 0.5rem;
+    }
+
+    .arch-layer.client h4 { color: var(--blue); }
+    .arch-layer.api h4 { color: var(--accent); }
+    .arch-layer.external h4 { color: var(--purple); }
+
+    .arch-layer ul {
+      list-style: none;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+
+    .arch-layer ul li {
+      padding: 0.2rem 0;
+    }
+
+    /* Tech Badges */
+    .badges {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin: 1rem 0;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.35rem 0.75rem;
+      border-radius: 999px;
+      font-size: 0.8rem;
+      font-weight: 500;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text);
+    }
+
+    /* Endpoint Table */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+      margin: 0.75rem 0;
+    }
+
+    th, td {
+      text-align: left;
+      padding: 0.6rem 0.75rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    th {
+      color: var(--text-muted);
+      font-weight: 500;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    td code {
+      background: var(--bg);
+      padding: 0.15rem 0.4rem;
+      border-radius: 3px;
+      font-size: 0.8rem;
+      color: var(--accent);
+    }
+
+    /* LLM Cards */
+    .llm-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.75rem;
+      margin: 0.75rem 0;
+    }
+
+    .llm-card {
+      border-radius: 8px;
+      padding: 0.75rem 1rem;
+      border: 1px solid var(--border);
+      background: var(--surface);
+    }
+
+    .llm-card h4 { font-size: 0.85rem; margin-bottom: 0.25rem; }
+    .llm-card .model { font-size: 0.8rem; color: var(--text-muted); }
+
+    @media (max-width: 700px) {
+      body { padding: 1rem; }
+      .flow { flex-direction: column; }
+      .flow-arrow { transform: rotate(90deg); }
+      .arch-grid { grid-template-columns: 1fr; }
+      .llm-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <a href="/" class="back-link">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M19 12H5M12 19l-7-7 7-7"/>
+      </svg>
+      Back to App
+    </a>
+    <h1>How It Works</h1>
+    <p>Architecture and data flow of the YouTube Podcast Transcript Processor</p>
+  </header>
+
+  <!-- About -->
+  <section style="margin-bottom: 2rem;">
+    <h2>About This App</h2>
+    <p style="color: var(--text-muted); font-size: 0.95rem; margin-bottom: 0.75rem;">
+      YouTube Podcast Transcript Processor extracts, processes, and summarizes transcripts from any YouTube video. Paste a URL, and the app fetches the full transcript using yt-dlp, then lets you clean it up with speaker detection, deduplication, and text normalization.
+    </p>
+    <p style="color: var(--text-muted); font-size: 0.95rem; margin-bottom: 0.75rem;">
+      Once processed, you can generate AI-powered summaries using Anthropic, Google Gemini, or Perplexity in three styles: bullet points with timestamp links, narrative essays, or structured technical extractions. Transcripts can be exported as TXT files, and AI summaries can be exported as PDF or TXT.
+    </p>
+    <p style="color: var(--text-muted); font-size: 0.95rem;">
+      The app also supports browsing entire channels and playlists, showing top videos ranked by views, and letting you jump between episodes with one click.
+    </p>
+  </section>
+
+  <!-- App Flow -->
+  <section style="margin-bottom: 2rem;">
+    <h2>Application Flow</h2>
+    <div class="flow">
+      <div class="flow-step"><div class="step-icon">1</div><div class="step-label">Paste URL</div></div>
+      <div class="flow-arrow">&rarr;</div>
+      <div class="flow-step"><div class="step-icon">2</div><div class="step-label">Fetch Transcript</div></div>
+      <div class="flow-arrow">&rarr;</div>
+      <div class="flow-step"><div class="step-icon">3</div><div class="step-label">Process &amp; View</div></div>
+      <div class="flow-arrow">&rarr;</div>
+      <div class="flow-step"><div class="step-icon">4</div><div class="step-label">AI Summary</div></div>
+      <div class="flow-arrow">&rarr;</div>
+      <div class="flow-step"><div class="step-icon">5</div><div class="step-label">Export</div></div>
+    </div>
+  </section>
+
+  <!-- Expandable Sections -->
+  <div id="sections"></div>
+
+  <!-- Tech Stack -->
+  <section style="margin-top: 2rem;">
+    <h2>Tech Stack</h2>
+    <div class="badges">
+      <span class="badge">Next.js 15</span>
+      <span class="badge">React 19</span>
+      <span class="badge">TypeScript 5</span>
+      <span class="badge">Tailwind CSS 4</span>
+      <span class="badge">shadcn/ui</span>
+      <span class="badge">Radix UI</span>
+      <span class="badge">Lucide Icons</span>
+      <span class="badge">Vitest</span>
+      <span class="badge">Playwright</span>
+      <span class="badge">yt-dlp</span>
+      <span class="badge">jsPDF</span>
+    </div>
+  </section>
+
+  <script>
+    const sections = [
+      {
+        title: 'URL Input & Validation',
+        icon: '1',
+        content: `
+          <p>The user pastes a YouTube URL into the input field. The app validates it in real-time, supporting multiple URL formats: standard watch URLs, shortened youtu.be links, playlist URLs, and channel URLs.</p>
+          <p>When a playlist or channel URL is detected, a notification appears allowing the user to browse all videos in that collection. Single video URLs proceed directly to transcript fetching.</p>
+        `
+      },
+      {
+        title: 'Transcript Fetching',
+        icon: '2',
+        content: `
+          <p>The app sends the URL to the <code>/api/transcript/ytdlp</code> endpoint, which uses the yt-dlp binary to extract subtitles and video metadata (title, duration, thumbnail, channel name, publish date).</p>
+          <p>A fallback endpoint <code>/api/transcript</code> uses the YoutubeTranscript library if yt-dlp is unavailable. Both endpoints return timestamped transcript segments.</p>
+          <table>
+            <tr><th>Endpoint</th><th>Method</th><th>Rate Limit</th></tr>
+            <tr><td><code>POST /api/transcript/ytdlp</code></td><td>Primary</td><td>20/min</td></tr>
+            <tr><td><code>POST /api/transcript</code></td><td>Fallback</td><td>20/min</td></tr>
+            <tr><td><code>POST /api/discover</code></td><td>Playlist/Channel</td><td>10/min</td></tr>
+            <tr><td><code>POST /api/channel</code></td><td>Channel Info</td><td>10/min</td></tr>
+          </table>
+        `
+      },
+      {
+        title: 'Processing & Options',
+        icon: '3',
+        content: `
+          <p>Once fetched, the transcript is processed client-side based on user-configurable options stored in localStorage:</p>
+          <p><strong>Speaker Detection</strong> identifies Host and Guest speakers using pattern matching. <strong>Deduplication</strong> removes repeated phrases and filler words. <strong>Text Normalization</strong> fixes capitalization and punctuation. <strong>Remove Timestamps</strong> strips time markers for cleaner output.</p>
+          <p>The processed transcript is displayed in an interactive viewer with full-text search and highlighting.</p>
+        `
+      },
+      {
+        title: 'AI Summary Generation',
+        icon: '4',
+        content: `
+          <p>The app sends the processed transcript to one or more LLM providers for summarization. Each provider uses externalized prompt templates stored in the <code>prompts/</code> folder.</p>
+          <div class="llm-grid">
+            <div class="llm-card"><h4>Anthropic</h4><div class="model">Claude Sonnet 4.5 &middot; temp 0.1</div></div>
+            <div class="llm-card"><h4>Google Gemini</h4><div class="model">Gemini 2.5 Flash &middot; temp 0.7</div></div>
+            <div class="llm-card"><h4>Perplexity</h4><div class="model">Sonar Online &middot; temp 0.7</div></div>
+          </div>
+          <p>Three summary styles are available: <strong>Bullets</strong> (10-15 key points with timestamp links), <strong>Narrative</strong> (flowing 750-1000 word essay), and <strong>Technical</strong> (structured extraction up to 2000 words).</p>
+          <p>The app proactively checks which providers have API keys configured via <code>GET /api/ai-summary/config</code> and skips unconfigured providers to avoid wasted requests.</p>
+        `
+      },
+      {
+        title: 'Export',
+        icon: '5',
+        content: `
+          <p>Transcripts can be exported as TXT files with configurable options for including metadata and timestamps. AI summaries can be copied to clipboard, downloaded as TXT, or exported as PDF.</p>
+          <p>Export filenames are generated from the video title for easy identification.</p>
+        `
+      },
+      {
+        title: 'Architecture',
+        icon: '&#9881;',
+        content: `
+          <div class="arch-grid">
+            <div class="arch-layer client">
+              <h4>Client (Browser)</h4>
+              <ul>
+                <li>React 19 components</li>
+                <li>shadcn/ui + Tailwind</li>
+                <li>Custom hooks</li>
+                <li>localStorage persistence</li>
+                <li>Session caching</li>
+              </ul>
+            </div>
+            <div class="arch-layer api">
+              <h4>API Routes (Server)</h4>
+              <ul>
+                <li>Next.js App Router</li>
+                <li>Rate limiting (per-IP)</li>
+                <li>Input validation</li>
+                <li>Error mapping</li>
+                <li>Structured logging</li>
+              </ul>
+            </div>
+            <div class="arch-layer external">
+              <h4>External Services</h4>
+              <ul>
+                <li>YouTube (yt-dlp)</li>
+                <li>Anthropic API</li>
+                <li>Google Gemini API</li>
+                <li>Perplexity API</li>
+              </ul>
+            </div>
+          </div>
+          <p>All API routes include standardized error handling with typed errors (INVALID_URL, VIDEO_NOT_FOUND, NO_TRANSCRIPT, NETWORK_ERROR, RATE_LIMIT) and dual-audience messages (user-friendly + developer-traceable).</p>
+        `
+      },
+      {
+        title: 'Security & Performance',
+        icon: '&#128274;',
+        content: `
+          <p><strong>Security:</strong> Content Security Policy headers restrict script and connection sources. Rate limiting prevents abuse (10-20 requests per minute per IP). All user inputs are validated server-side. The config endpoint exposes only boolean values, never API keys.</p>
+          <p><strong>Performance:</strong> Session-based caching keeps channel data in memory for 5 minutes. Request deduplication prevents duplicate concurrent API calls. React.memo and useMemo prevent unnecessary re-renders. Code splitting, lazy loading, and Turbopack provide fast dev and production builds.</p>
+        `
+      }
+    ];
+
+    const container = document.getElementById('sections');
+
+    sections.forEach((section, idx) => {
+      const el = document.createElement('div');
+      el.className = 'section';
+      if (idx === 0) el.className += ' open';
+
+      el.innerHTML = `
+        <div class="section-header">
+          <span class="section-title">
+            <span class="icon">${section.icon}</span>
+            ${section.title}
+          </span>
+          <span class="section-chevron">&#9660;</span>
+        </div>
+        <div class="section-content">
+          ${section.content}
+        </div>
+      `;
+
+      el.querySelector('.section-header').addEventListener('click', () => {
+        el.classList.toggle('open');
+      });
+
+      container.appendChild(el);
+    });
+  </script>
+</body>
+</html>

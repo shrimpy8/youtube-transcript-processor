@@ -3,8 +3,6 @@
  * Shared helper functions for handling API requests and responses
  */
 
-import * as fs from 'fs/promises'
-import * as path from 'path'
 
 /**
  * API error response structure
@@ -166,15 +164,6 @@ export async function buildAnthropicPromptParts(
   }
 
   userParts.push(`## Transcript\n\n${transcript}\n\nPlease provide your analysis:`)
-
-  // Load XML-tagged hard exclusion block from file and append to system prompt
-  try {
-    const exclusionsPath = path.join(process.cwd(), 'prompts', 'anthropic-exclusions.xml')
-    const exclusionsContent = await fs.readFile(exclusionsPath, 'utf-8')
-    systemParts.push(exclusionsContent.trim())
-  } catch {
-    // If file can't be loaded, skip exclusions rather than fail the request
-  }
 
   return {
     systemPrompt: systemParts.join('\n\n'),
