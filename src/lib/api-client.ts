@@ -1,4 +1,5 @@
 import { TranscriptSegment, ChannelInfo, ChannelDetails, VideoMetadata, LLMProvider, AISummaryResponse, SummaryStyle } from '@/types'
+import type { LLMProviderKey } from '@/lib/llm-config'
 import { AppError, ErrorType, NoTranscriptError, VideoNotFoundError, NetworkError, RateLimitError } from './errors'
 import { extractErrorMessage } from './utils'
 
@@ -297,5 +298,30 @@ export async function generateAISummary(
     if (error instanceof AppError) throw error
     throw new AppError(ErrorType.UNKNOWN, extractErrorMessage(error, 'Failed to generate AI summary'))
   }
+}
+
+/**
+ * Response from the provider config endpoint
+ */
+export interface ProviderConfigResponse {
+  success: boolean
+  providers: Record<LLMProviderKey, boolean>
+}
+
+/**
+ * Fetches which LLM providers have API keys configured
+ * Fail-open: returns all-true on error so the UI doesn't block users unnecessarily
+ */
+export async function fetchProviderConfig(): Promise<Record<LLMProviderKey, boolean>> {
+  try {
+    const response = await fetch('/api/ai-summary/config')
+    const data: ProviderConfigResponse = await response.json()
+    if (data.success && data.providers) {
+      return data.providers
+    }
+  } catch {
+    // Fail-open: if config endpoint is unreachable, assume all configured
+  }
+  return { anthropic: true, 'google-gemini': true, perplexity: true }
 }
 

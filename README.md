@@ -2,11 +2,6 @@
 
 A Next.js application for extracting, processing, and exporting YouTube podcast transcripts with advanced features including speaker detection, deduplication, and TXT export format.
 
-## 📋 Project Documentation
-
-- **[docs/PRD-UI.md](./docs/PRD-UI.md)** - Product Requirements Document for the User Interface
-- **[docs/MILESTONES.md](./docs/MILESTONES.md)** - Development milestones with validation criteria and success metrics
-
 ## 📸 Screenshots
 
 ### Main Interface
@@ -249,22 +244,6 @@ This project uses [`next/font`](https://nextjs.org/docs/app/building-your-applic
 - Multi-language support
 - Browser extension
 
-## 📖 Development Milestones
-
-See [docs/MILESTONES.md](./docs/MILESTONES.md) for detailed development plan. All 9 milestones are now complete:
-
-1. ✅ Foundation & Setup
-2. ✅ URL Input & Validation
-3. ✅ Transcript Fetching & API Integration
-4. ✅ Processing Options UI
-5. ✅ Processing Integration
-6. ✅ Transcript Viewer
-7. ✅ Export Functionality
-8. ✅ Error Handling & Edge Cases
-9. ✅ Polish & Optimization
-
-**Status**: 🎉 **100% Complete** - All milestones achieved with comprehensive testing!
-
 ## 🏗️ Project Structure
 
 ```text
@@ -331,11 +310,7 @@ npm run test:e2e      # E2E tests
 
 ## 📚 Documentation
 
-- **[docs/PRD-UI.md](./docs/PRD-UI.md)** - Product Requirements Document
-- **[docs/MILESTONES.md](./docs/MILESTONES.md)** - Development milestones and progress
 - **[docs/ENV_VARIABLES.md](./docs/ENV_VARIABLES.md)** - Environment variable configuration
-- **[docs/API_VERIFICATION.md](./docs/API_VERIFICATION.md)** - API implementation verification
-- **[docs/DEBUG_LOGGING_DOCUMENTATION.md](./docs/DEBUG_LOGGING_DOCUMENTATION.md)** - Debug logging guide
 - **[prompts/](./prompts/)** - AI summary prompt templates ([README](./prompts/README.md) for details)
 
 ## 📝 Learn More
