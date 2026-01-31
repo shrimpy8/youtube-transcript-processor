@@ -43,9 +43,7 @@ next-env.d.ts
 *.log
 
 # internal docs
-docs/PROMPT_TUNING_LOG.md
-docs/SECURITY_AUDIT.md
-docs/UX_REVIEW.md
+docs/archive/
 
 # AI summary test outputs
 ai_summary/*.txt
