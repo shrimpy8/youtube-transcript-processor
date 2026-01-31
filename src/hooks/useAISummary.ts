@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useCallback } from 'react'
-import { LLMProvider, AISummaryResponse, AISummaryState } from '@/types'
+import { LLMProvider, AISummaryResponse, AISummaryState, SummaryStyle } from '@/types'
 import { generateAISummary } from '@/lib/api-client'
 import { ALL_PROVIDERS, type LLMProviderKey } from '@/lib/llm-config'
 import { extractErrorMessage } from '@/lib/utils'
@@ -51,7 +51,9 @@ export function useAISummary() {
    */
   const generateSummary = useCallback(async (
     transcript: string,
-    provider: LLMProvider
+    provider: LLMProvider,
+    summaryStyle: SummaryStyle = 'bullets',
+    videoUrl?: string
   ): Promise<void> => {
     // Validate transcript input
     if (!transcript || transcript.trim().length === 0) {
@@ -87,7 +89,7 @@ export function useAISummary() {
 
     try {
       // Generate summaries via API
-      const summaries = await generateAISummary(transcript, provider)
+      const summaries = await generateAISummary(transcript, provider, summaryStyle, videoUrl)
       
       // Process results and update state
       setState(prev => {

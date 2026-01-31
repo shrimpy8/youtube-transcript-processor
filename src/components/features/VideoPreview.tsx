@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Loader2 } from 'lucide-react'
+import { Loader2, ExternalLink } from 'lucide-react'
 import Image from 'next/image'
 import { ChannelDetails } from './ChannelDetails'
 import { PlaylistDetails } from './PlaylistDetails'
@@ -169,12 +169,25 @@ export function VideoPreview({
                     </div>
                   )}
                   
-                  {metadata.duration && (
-                    <div className="text-sm">
-                      <span className="font-medium">Duration:</span>{' '}
-                      <span className="text-muted-foreground">{formatDuration(metadata.duration)}</span>
-                    </div>
-                  )}
+                  <div className="flex items-center gap-4 text-sm">
+                    {metadata.duration && (
+                      <div>
+                        <span className="font-medium">Duration:</span>{' '}
+                        <span className="text-muted-foreground">{formatDuration(metadata.duration)}</span>
+                      </div>
+                    )}
+                    <Button variant="outline" size="sm" asChild>
+                      <a
+                        href={metadata.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-1"
+                      >
+                        <ExternalLink className="h-3 w-3" />
+                        View Episode
+                      </a>
+                    </Button>
+                  </div>
 
                   {!transcript && onProcess && (
                     <Button 
@@ -229,21 +242,24 @@ export function VideoPreview({
           {/* AI Summary Tab - only show when transcript is available */}
           {transcript && metadata && (
             <TabsContent value="ai-summary" className="mt-4">
-              <AISummary 
+              <AISummary
                 transcript={transcript}
                 videoTitle={metadata.title}
+                videoUrl={metadata.url}
               />
             </TabsContent>
           )}
 
-          {/* Channel Tab - only shows channel videos */}
+          {/* Channel Tab - forceMount keeps component mounted to preserve cache */}
           {showChannelTab && (
-            <TabsContent value="channel" className="mt-4">
-              <ChannelDetails 
-                videoUrl={metadata?.url || null}
-                channelUrl={channelUrl || null}
-                onPasteUrl={onPasteUrl}
-              />
+            <TabsContent value="channel" className="mt-4" forceMount>
+              <div className={activeTab !== 'channel' ? 'hidden' : ''}>
+                <ChannelDetails
+                  videoUrl={metadata?.url || null}
+                  channelUrl={channelUrl || null}
+                  onPasteUrl={onPasteUrl}
+                />
+              </div>
             </TabsContent>
           )}
 

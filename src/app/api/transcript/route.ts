@@ -151,7 +151,7 @@ export async function POST(request: NextRequest) {
       { 
         error: 'Failed to fetch transcript',
         type: 'UNKNOWN',
-        message: error.message || 'An unexpected error occurred',
+        message: error instanceof Error ? error.message : 'An unexpected error occurred',
       },
       { status: 500 }
     )

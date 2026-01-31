@@ -169,8 +169,7 @@ export function getMemoryUsage(): {
     return null
   }
 
-  // @ts-expect-error - memory is not in standard Performance type
-  const memory = (performance as { memory?: { usedJSHeapSize: number; totalJSHeapSize: number; jsHeapSizeLimit: number } }).memory
+  const memory = (performance as unknown as { memory?: { usedJSHeapSize: number; totalJSHeapSize: number; jsHeapSizeLimit: number } }).memory
 
   if (!memory) {
     return null

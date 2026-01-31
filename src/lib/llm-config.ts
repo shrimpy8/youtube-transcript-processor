@@ -26,6 +26,8 @@ export interface ProviderConfig {
   defaultModel: string
   /** Default user-friendly model name if not set in environment */
   defaultModelName: string
+  /** Maximum output tokens for summary generation */
+  maxOutputTokens: number
 }
 
 /**
@@ -41,6 +43,7 @@ export const PROVIDER_CONFIG: Record<LLMProviderKey, ProviderConfig> = {
     modelNameEnv: 'ANTHROPIC_MODEL_NAME',
     defaultModel: 'claude-sonnet-4-5-20250929',
     defaultModelName: 'Anthropic Sonnet 4.5',
+    maxOutputTokens: 16384,
   },
   'google-gemini': {
     apiKeyEnv: 'GOOGLE_GEMINI_API_KEY',
@@ -48,6 +51,7 @@ export const PROVIDER_CONFIG: Record<LLMProviderKey, ProviderConfig> = {
     modelNameEnv: 'GOOGLE_GEMINI_MODEL_NAME',
     defaultModel: 'gemini-2.5-flash',
     defaultModelName: 'Google Gemini 2.5 Flash',
+    maxOutputTokens: 16384,
   },
   'perplexity': {
     apiKeyEnv: 'PERPLEXITY_API_KEY',
@@ -55,6 +59,7 @@ export const PROVIDER_CONFIG: Record<LLMProviderKey, ProviderConfig> = {
     modelNameEnv: 'PERPLEXITY_MODEL_NAME',
     defaultModel: 'sonar',
     defaultModelName: 'Perplexity Sonar',
+    maxOutputTokens: 16384,
   },
 }
 

@@ -165,11 +165,18 @@ export interface ProcessingOptions {
 export type LLMProvider = 'anthropic' | 'google-gemini' | 'perplexity' | 'all'
 
 /**
+ * Summary style options
+ */
+export type SummaryStyle = 'bullets' | 'narrative' | 'technical'
+
+/**
  * AI Summary request payload
  */
 export interface AISummaryRequest {
   transcript: string
   provider: LLMProvider
+  summaryStyle?: SummaryStyle
+  videoUrl?: string
 }
 
 /**

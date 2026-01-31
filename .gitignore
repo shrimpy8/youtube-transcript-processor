@@ -41,3 +41,9 @@ yarn-error.log*
 next-env.d.ts
 
 *.log
+
+# internal docs
+docs/PROMPT_TUNING_LOG.md
+
+# AI summary test outputs
+ai_summary/*.txt

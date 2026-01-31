@@ -29,7 +29,7 @@ export const ChannelDetails = memo(function ChannelDetails({
   const [copied, setCopied] = useState(false)
   
   // Use channelUrl if provided, otherwise fall back to videoUrl
-  const urlToUse = channelUrl || videoUrl
+  const urlToUse = channelUrl || videoUrl || null
   const { channel: channelData, isLoading, error } = useChannelData(urlToUse, channelUrl ? 'channel' : 'video')
 
   // Memoize channel and videos to prevent unnecessary re-renders

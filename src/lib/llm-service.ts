@@ -1,15 +1,15 @@
-import { AISummaryResponse } from '@/types'
+import { AISummaryResponse, SummaryStyle } from '@/types'
 import { createLogger } from './logger'
 import * as fs from 'fs/promises'
 import * as path from 'path'
-import { 
-  getProviderConfig, 
-  getProviderApiKey, 
+import {
+  getProviderConfig,
+  getProviderApiKey,
   getProviderModelName,
   ALL_PROVIDERS,
-  type LLMProviderKey 
+  type LLMProviderKey
 } from './llm-config'
-import { buildFullPrompt, handleApiResponseError } from './llm-api-helpers'
+import { buildFullPrompt, buildAnthropicPromptParts, handleApiResponseError } from './llm-api-helpers'
 
 /**
  * Logger instance for LLM service
@@ -17,49 +17,73 @@ import { buildFullPrompt, handleApiResponseError } from './llm-api-helpers'
 const logger = createLogger('llm-service')
 
 /**
- * Default prompt template (fallback if file can't be loaded)
+ * Prompt templates directory (relative to project root)
  */
-const DEFAULT_PROMPT_TEMPLATE = `You are an expert analyst specializing in extracting actionable insights from podcast transcripts. 
-
-CRITICAL RULES:
-1. Only use information explicitly stated in the transcript. Do NOT add, infer, or assume any information not directly present.
-2. NO HALLUCINATION: If information is not explicitly mentioned, do not include it.
-3. Cite transcript content when possible.
-
-Extract key insights focusing on:
-- AI tool best practices and workflows
-- Technology trends and industry insights
-- Product management techniques
-- Skills product managers need in the AI age
-
-Organize your summary into clear sections with actionable takeaways.`
+const PROMPTS_DIR = 'prompts'
 
 /**
- * Loads the prompt template from docs/prompt.md
- * This is a server-side function and should only be called from API routes
- * 
- * @returns Promise resolving to the prompt template string
- * @throws Never throws - always returns a template (default if file can't be loaded)
+ * Fallback prompt file name (used when style-specific template fails to load)
  */
-export async function loadPromptTemplate(): Promise<string> {
+const FALLBACK_PROMPT_FILE = 'fallback.md'
+
+/**
+ * Maps summary style to the corresponding prompt template filename
+ */
+const STYLE_PROMPT_FILES: Record<SummaryStyle, string> = {
+  bullets: 'bullets.md',
+  narrative: 'narrative.md',
+  technical: 'technical.md',
+}
+
+/**
+ * Loads the prompt template for the given summary style
+ * For bullets style, appends the video URL so the LLM can generate timestamp links
+ *
+ * @param style - Summary style to load prompt for (defaults to 'bullets')
+ * @param videoUrl - YouTube video URL for timestamp links (used only for bullets style)
+ * @returns Promise resolving to the prompt template string
+ */
+export async function loadPromptTemplate(
+  style: SummaryStyle = 'bullets',
+  videoUrl?: string
+): Promise<string> {
+  const filename = STYLE_PROMPT_FILES[style]
+
   try {
-    const promptPath = path.join(process.cwd(), 'docs', 'prompt.md')
-    logger.debug('Loading prompt template', { promptPath })
-    
+    const promptPath = path.join(process.cwd(), PROMPTS_DIR, filename)
+    logger.debug('Loading prompt template', { promptPath, style })
+
     const promptContent = await fs.readFile(promptPath, 'utf-8')
-    const trimmedContent = promptContent.trim()
-    
-    logger.info('Prompt template loaded successfully', { 
+    let trimmedContent = promptContent.trim()
+
+    // For bullets style, inject the video URL so the LLM can build timestamp links
+    if (style === 'bullets' && videoUrl) {
+      trimmedContent += `\n\n## Video URL\n\nUse this exact URL for all timestamp links: ${videoUrl}`
+    }
+
+    logger.info('Prompt template loaded successfully', {
       length: trimmedContent.length,
-      path: promptPath 
+      path: promptPath,
+      style,
+      hasVideoUrl: !!videoUrl,
     })
-    
+
     return trimmedContent
   } catch (error) {
-    logger.error('Failed to load prompt template, using default', error, {
-      fallback: 'DEFAULT_PROMPT_TEMPLATE'
+    logger.error('Failed to load prompt template, using fallback', error, {
+      fallback: FALLBACK_PROMPT_FILE,
+      style,
+      filename,
     })
-    return DEFAULT_PROMPT_TEMPLATE
+    // Try loading the fallback prompt file
+    try {
+      const fallbackPath = path.join(process.cwd(), PROMPTS_DIR, FALLBACK_PROMPT_FILE)
+      const fallbackContent = await fs.readFile(fallbackPath, 'utf-8')
+      return fallbackContent.trim()
+    } catch {
+      // Hardcoded last-resort fallback if even the file is missing
+      return 'You are an expert analyst. Summarize the following podcast transcript with actionable insights. Only use information explicitly stated in the transcript.'
+    }
   }
 }
 
@@ -152,13 +176,14 @@ export async function generateAnthropicSummary(
     })
   }
 
-  const fullPrompt = buildFullPrompt(promptTemplate, transcript)
+  const { systemPrompt, userMessage } = await buildAnthropicPromptParts(promptTemplate, transcript)
 
   return retryWithBackoff(async () => {
     logger.debug('Making Anthropic API request', {
       endpoint: 'https://api.anthropic.com/v1/messages',
       model,
-      promptLength: fullPrompt.length
+      systemPromptLength: systemPrompt.length,
+      userMessageLength: userMessage.length
     })
 
     const response = await fetch('https://api.anthropic.com/v1/messages', {
@@ -170,13 +195,15 @@ export async function generateAnthropicSummary(
       },
       body: JSON.stringify({
         model,
-        max_tokens: 4000,
+        max_tokens: config.maxOutputTokens,
+        system: systemPrompt,
         messages: [
           {
             role: 'user',
-            content: fullPrompt,
+            content: userMessage,
           },
         ],
+        temperature: 0.1,
       }),
     })
 
@@ -265,7 +292,7 @@ export async function generateGeminiSummary(
           },
         ],
         generationConfig: {
-          maxOutputTokens: 4000,
+          maxOutputTokens: config.maxOutputTokens,
           temperature: 0.7,
         },
       }),
@@ -352,7 +379,7 @@ export async function generatePerplexitySummary(
             content: fullPrompt,
           },
         ],
-        max_tokens: 4000,
+        max_tokens: config.maxOutputTokens,
         temperature: 0.7,
       }),
     })
@@ -375,6 +402,36 @@ export async function generatePerplexitySummary(
         choicesLength: data.choices?.length
       })
       throw new Error('No content returned from Perplexity API')
+    }
+
+    // Detect refusal/confused responses where Perplexity ignores the transcript
+    const refusalPatterns = [
+      /you haven't.*provided.*transcript/i,
+      /I need.*transcript/i,
+      /please (share|provide).*transcript/i,
+      /I appreciate your.*setup.*but/i,
+    ]
+    const isRefusal = refusalPatterns.some(pattern => pattern.test(content))
+    if (isRefusal) {
+      logger.warn('Perplexity returned a refusal response, will retry', {
+        contentPreview: content.substring(0, 200)
+      })
+      throw new Error('Perplexity did not process the transcript. Please try again.')
+    }
+
+    // Detect incomplete Technical responses (missing required sections)
+    const isTechnicalPrompt = promptTemplate.includes('### 1. Tools & Technologies')
+    if (isTechnicalPrompt) {
+      const hasSection1 = /###?\s*1\.\s*Tools/i.test(content)
+      const hasSection2 = /###?\s*2\.\s*Workflows/i.test(content)
+      if (!hasSection1 || !hasSection2) {
+        logger.warn('Perplexity returned incomplete Technical summary, will retry', {
+          hasSection1,
+          hasSection2,
+          contentPreview: content.substring(0, 200)
+        })
+        throw new Error('Perplexity returned an incomplete summary (missing sections). Retrying...')
+      }
     }
 
     logger.info('Perplexity summary generated successfully', {

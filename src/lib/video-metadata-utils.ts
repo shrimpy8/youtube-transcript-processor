@@ -45,7 +45,7 @@ export function transformYtDlpVideoInfo(info: YtDlpVideoInfo): VideoMetadata | n
     duration: info.duration || undefined,
     thumbnail: info.thumbnail || undefined,
     channelTitle: info.channel || info.uploader || undefined,
-    publishedAt,
+    publishedAt: publishedAt || '',
     viewCount: info.view_count || undefined,
   }
 }

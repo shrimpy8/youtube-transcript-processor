@@ -55,21 +55,8 @@ export function parseSrtFile(content: string): TranscriptSegment[] {
     return []
   }
 
-  // Try UTF-8 first, fallback to Latin-1 if needed
-  let srtContent = content
-  try {
-    // Content should already be decoded, but handle encoding issues
-    if (typeof content !== 'string') {
-      srtContent = content.toString('utf-8')
-    }
-  } catch (error) {
-    // Fallback to Latin-1 if UTF-8 fails
-    try {
-      srtContent = Buffer.from(content, 'latin-1').toString('utf-8')
-    } catch {
-      srtContent = content
-    }
-  }
+  // Content is always a string at this point (Buffer handling is in parseSrtContent)
+  const srtContent = content
 
   // Split into subtitle blocks (separated by blank lines)
   const blocks = srtContent.trim().split(/\n\s*\n/)
@@ -148,7 +135,7 @@ export function parseSrtContent(input: string | Buffer): TranscriptSegment[] {
       content = input.toString('utf-8')
     } catch {
       // Fallback to Latin-1
-      content = input.toString('latin-1')
+      content = input.toString('latin1')
     }
   } else {
     content = input
