@@ -44,6 +44,7 @@ next-env.d.ts
 
 # internal docs
 docs/archive/
+docs/PROMPT_TUNING_LOG.md
 
 # AI summary test outputs
 ai_summary/*.txt

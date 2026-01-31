@@ -169,7 +169,7 @@ export function VideoPreview({
                     </div>
                   )}
                   
-                  <div className="flex items-center gap-4 text-sm">
+                  <div className="flex items-center justify-end gap-4 text-sm">
                     {metadata.duration && (
                       <div>
                         <span className="font-medium">Duration:</span>{' '}

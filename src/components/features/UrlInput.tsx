@@ -167,23 +167,31 @@ export function UrlInput({
         />
       )}
 
-      <div className="flex gap-2">
-        <Button 
-          type="submit" 
+      <div className="flex items-center gap-2">
+        <Button
+          type="submit"
           disabled={!isValid || isValidating}
           className="flex-1 sm:flex-initial"
         >
           Get Transcript
         </Button>
         {url && (
-          <Button 
-            type="button" 
-            variant="outline" 
+          <Button
+            type="button"
+            variant="outline"
             onClick={reset}
           >
             Clear
           </Button>
         )}
+        <a
+          href="/how-it-works.html"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="ml-auto text-xs text-muted-foreground hover:text-foreground transition-colors"
+        >
+          How It Works
+        </a>
       </div>
     </form>
   )

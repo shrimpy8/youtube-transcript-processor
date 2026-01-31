@@ -22,7 +22,7 @@ The application generates AI-powered summaries using 3 LLM providers in 3 styles
 
 | Provider | Model | Notes |
 |----------|-------|-------|
-| **Anthropic** | Claude Sonnet 4.5 | System prompt separation + XML exclusion block, temperature 0.1 |
+| **Anthropic** | Claude Sonnet 4.5 | System + user message split (Anthropic best practice), temperature 0.7 |
 | **Google Gemini** | Gemini 2.5 Flash | Single content block, temperature 0.7 |
 | **Perplexity** | Sonar Online | Chat completions format, temperature 0.7 |
 
@@ -32,7 +32,7 @@ The application generates AI-powered summaries using 3 LLM providers in 3 styles
 | **Narrative** | Flowing essay (Opening, Key Ideas, Practical Takeaways, Closing) | 750-1000 words |
 | **Technical** | Structured extraction (Tools, Workflows, Tips, Metrics) | 2000 words max |
 
-Prompt templates are stored in the [`prompts/`](./prompts/) folder and loaded at runtime. They have gone through multiple iterations of tuning to tighten accuracy, enforce exclusion rules, and produce quality results across all providers. See [`prompts/README.md`](./prompts/README.md) for full details on which files are used by which LLMs and modes.
+Prompt templates are stored in the [`prompts/`](./prompts/) folder and loaded at runtime. They have gone through multiple iterations of tuning to tighten accuracy and produce quality results across all providers. See [`prompts/README.md`](./prompts/README.md) for full details on which files are used by which LLMs and modes.
 
 ### AI Summary Examples
 
@@ -96,39 +96,9 @@ The application is built with accessibility in mind:
 - **Skip links**: Quick navigation for keyboard users
 - **Reduced motion**: Respects user's motion preferences
 
-## 🎯 Current Status
-
-**Project Status**: ✅ **100% Complete** - All milestones achieved!
-
-### Backend Logic: ✅ 100% Complete
-
-- Transcript processing library with deduplication
-- Speaker detection (Host/Guest patterns)
-- TXT format export with customizable options
-- Utility functions for YouTube URL handling
-- yt-dlp integration for transcript fetching
-- Channel and playlist video discovery
-- Comprehensive error handling and edge case coverage
-
-### Frontend UI: ✅ 100% Complete
-
-- Complete UI with shadcn/ui components
-- URL input with real-time validation
-- Video preview with tabbed interface (Video/Channel tabs)
-- Processing options panel with localStorage persistence
-- Real-time transcript processing with progress tracking
-- Interactive transcript viewer with search functionality
-- Export controls for TXT format
-- Channel details with top 10 videos display
-- Performance optimizations (caching, memoization, request deduplication)
-- Dark mode support
-- Responsive design
-- Accessibility improvements (WCAG 2.1 AA compliant)
-- Mobile optimization with touch support
-- Performance monitoring and Web Vitals tracking
-- Cross-browser compatibility
-
 ## 🚀 Getting Started
+
+For the full setup guide, see [docs/SETUP.md](./docs/SETUP.md).
 
 ### Environment Setup
 
@@ -186,7 +156,7 @@ This project uses [`next/font`](https://nextjs.org/docs/app/building-your-applic
 - **Framework**: Next.js 15+ (App Router)
 - **Language**: TypeScript 5+
 - **Styling**: Tailwind CSS 4+
-- **UI Components**: shadcn/ui (to be installed)
+- **UI Components**: shadcn/ui (Radix UI + Lucide Icons)
 - **React**: 19+
 
 ## 📦 Features
@@ -252,7 +222,8 @@ src/
 │   ├── api/               # API routes
 │   │   ├── transcript/    # Transcript fetching endpoints
 │   │   ├── channel/       # Channel information endpoint
-│   │   └── discover/      # Video discovery endpoint
+│   │   ├── discover/      # Video discovery endpoint
+│   │   └── ai-summary/    # AI summary + config endpoints
 │   ├── layout.tsx         # Root layout with theme provider
 │   └── page.tsx           # Home page with main UI
 ├── components/            # React components
@@ -310,8 +281,12 @@ npm run test:e2e      # E2E tests
 
 ## 📚 Documentation
 
+- **[docs/SETUP.md](./docs/SETUP.md)** - Setup and installation guide
+- **[docs/API.md](./docs/API.md)** - API reference (endpoints, request/response schemas, rate limits)
+- **[docs/INFRASTRUCTURE.md](./docs/INFRASTRUCTURE.md)** - Architecture, tech stack, and infrastructure
 - **[docs/ENV_VARIABLES.md](./docs/ENV_VARIABLES.md)** - Environment variable configuration
 - **[prompts/](./prompts/)** - AI summary prompt templates ([README](./prompts/README.md) for details)
+- **[How It Works](/how-it-works.html)** - Interactive architecture overview page
 
 ## 📝 Learn More
 
@@ -344,15 +319,3 @@ The easiest way to deploy your Next.js app is to use the [Vercel Platform](https
 - ✅ Bundle size < 1MB initial JavaScript
 - ✅ Memory usage < 100MB typical operations
 
-## 🎉 Project Completion
-
-This project has successfully completed all 9 development milestones with:
-
-- ✅ Comprehensive error handling and edge case coverage
-- ✅ Full accessibility compliance (WCAG 2.1 AA)
-- ✅ Performance optimizations and monitoring
-- ✅ Mobile-first responsive design
-- ✅ Cross-browser compatibility
-- ✅ Extensive test coverage (unit, integration, E2E)
-
-**Ready for production deployment!** 🚀

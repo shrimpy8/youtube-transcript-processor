@@ -243,7 +243,7 @@ export async function generateAnthropicSummary(
             content: userMessage,
           },
         ],
-        temperature: 0.1,
+        temperature: 0.7,
       }),
     })
 
