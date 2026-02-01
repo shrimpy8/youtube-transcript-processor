@@ -36,33 +36,6 @@ function getFCPRating(value: number): MetricRating {
 }
 
 /**
- * Get rating for LCP (Largest Contentful Paint)
- */
-function getLCPRating(value: number): MetricRating {
-  if (value <= 2500) return 'good'
-  if (value <= 4000) return 'needs-improvement'
-  return 'poor'
-}
-
-/**
- * Get rating for FID (First Input Delay)
- */
-function getFIDRating(value: number): MetricRating {
-  if (value <= 100) return 'good'
-  if (value <= 300) return 'needs-improvement'
-  return 'poor'
-}
-
-/**
- * Get rating for CLS (Cumulative Layout Shift)
- */
-function getCLSRating(value: number): MetricRating {
-  if (value <= 0.1) return 'good'
-  if (value <= 0.25) return 'needs-improvement'
-  return 'poor'
-}
-
-/**
  * Get rating for TTFB (Time to First Byte)
  */
 function getTTFBRating(value: number): MetricRating {
@@ -112,7 +85,7 @@ export async function collectPerformanceMetrics(): Promise<PerformanceMetrics> {
       metrics.fcp = fcpEntry.startTime
       metrics.fcpRating = getFCPRating(metrics.fcp)
     }
-  } catch (e) {
+  } catch {
     // Ignore errors
   }
 
@@ -123,7 +96,7 @@ export async function collectPerformanceMetrics(): Promise<PerformanceMetrics> {
       metrics.ttfb = navigationEntry.responseStart - navigationEntry.requestStart
       metrics.ttfbRating = getTTFBRating(metrics.ttfb)
     }
-  } catch (e) {
+  } catch {
     // Ignore errors
   }
 

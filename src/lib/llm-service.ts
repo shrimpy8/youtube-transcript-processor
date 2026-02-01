@@ -7,6 +7,7 @@ import {
   getProviderApiKey,
   getProviderModelName,
   ALL_PROVIDERS,
+  LLM_DEFAULTS,
   type LLMProviderKey
 } from './llm-config'
 import { buildFullPrompt, buildAnthropicPromptParts, handleApiResponseError } from './llm-api-helpers'
@@ -93,8 +94,21 @@ export async function loadPromptTemplate(
     const promptPath = path.join(process.cwd(), PROMPTS_DIR, filename)
     logger.debug('Loading prompt template', { promptPath, style })
 
+    // Ensure prompt path doesn't escape the prompts directory (path traversal defense)
+    const resolvedPath = path.resolve(promptPath)
+    const expectedDir = path.resolve(process.cwd(), PROMPTS_DIR)
+    if (!resolvedPath.startsWith(expectedDir)) {
+      throw new Error('Prompt template path traversal detected')
+    }
+
     const promptContent = await fs.readFile(promptPath, 'utf-8')
     let trimmedContent = promptContent.trim()
+
+    // Sanity check: prompt templates should be reasonable size (< 50KB)
+    if (trimmedContent.length > 50000) {
+      logger.warn('Prompt template unusually large, possible tampering', { length: trimmedContent.length })
+      throw new Error('Prompt template exceeds maximum expected size')
+    }
 
     // For bullets style, inject the video URL so the LLM can build timestamp links
     if (style === 'bullets' && videoUrl) {
@@ -120,8 +134,9 @@ export async function loadPromptTemplate(
       const fallbackPath = path.join(process.cwd(), PROMPTS_DIR, FALLBACK_PROMPT_FILE)
       const fallbackContent = await fs.readFile(fallbackPath, 'utf-8')
       return fallbackContent.trim()
-    } catch {
+    } catch (fallbackError) {
       // Hardcoded last-resort fallback if even the file is missing
+      logger.error('Both primary and fallback prompt files are missing — using hardcoded last-resort prompt', fallbackError)
       return 'You are an expert analyst. Summarize the following podcast transcript with actionable insights. Only use information explicitly stated in the transcript.'
     }
   }
@@ -139,8 +154,8 @@ export async function loadPromptTemplate(
  */
 async function retryWithBackoff<T>(
   fn: () => Promise<T>,
-  maxRetries: number = 3,
-  initialDelay: number = 1000
+  maxRetries: number = LLM_DEFAULTS.maxRetries,
+  initialDelay: number = LLM_DEFAULTS.initialRetryDelayMs
 ): Promise<T> {
   let lastError: Error | unknown
   
@@ -210,10 +225,7 @@ export async function generateAnthropicSummary(
 
   // Validate API key format (Anthropic keys typically start with 'sk-ant-')
   if (!apiKey.startsWith('sk-ant-')) {
-    logger.warn('Anthropic API key format may be invalid', {
-      apiKeyPrefix: apiKey.substring(0, 6) + '***',
-      expectedPrefix: 'sk-ant-'
-    })
+    logger.warn('Anthropic API key format may be invalid — check ANTHROPIC_API_KEY in .env.local')
   }
 
   const { systemPrompt, userMessage } = await buildAnthropicPromptParts(promptTemplate, transcript)
@@ -231,7 +243,7 @@ export async function generateAnthropicSummary(
       headers: {
         'Content-Type': 'application/json',
         'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
+        'anthropic-version': config.apiVersion || '2023-06-01',
       },
       body: JSON.stringify({
         model,
@@ -243,8 +255,9 @@ export async function generateAnthropicSummary(
             content: userMessage,
           },
         ],
-        temperature: 0.7,
+        temperature: LLM_DEFAULTS.temperature,
       }),
+      signal: AbortSignal.timeout(LLM_DEFAULTS.fetchTimeoutMs),
     })
 
     if (!response.ok) {
@@ -335,9 +348,10 @@ export async function generateGeminiSummary(
         ],
         generationConfig: {
           maxOutputTokens: config.maxOutputTokens,
-          temperature: 0.7,
+          temperature: LLM_DEFAULTS.temperature,
         },
       }),
+      signal: AbortSignal.timeout(LLM_DEFAULTS.fetchTimeoutMs),
     })
 
     if (!response.ok) {
@@ -424,8 +438,9 @@ export async function generatePerplexitySummary(
           },
         ],
         max_tokens: config.maxOutputTokens,
-        temperature: 0.7,
+        temperature: LLM_DEFAULTS.temperature,
       }),
+      signal: AbortSignal.timeout(LLM_DEFAULTS.fetchTimeoutMs),
     })
 
     if (!response.ok) {
@@ -489,7 +504,6 @@ export async function generateSummaryForProvider(
   transcript: string,
   promptTemplate: string
 ): Promise<AISummaryResponse> {
-  const config = getProviderConfig(provider)
   const modelName = getProviderModelName(provider)
   
   logger.info('Generating summary for provider', {

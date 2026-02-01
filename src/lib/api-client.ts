@@ -1,6 +1,6 @@
 import { TranscriptSegment, ChannelInfo, ChannelDetails, VideoMetadata, LLMProvider, AISummaryResponse, SummaryStyle } from '@/types'
 import type { LLMProviderKey } from '@/lib/llm-config'
-import { AppError, ErrorType, NoTranscriptError, VideoNotFoundError, NetworkError, RateLimitError } from './errors'
+import { AppError, ErrorType } from './errors'
 import { extractErrorMessage } from './utils'
 
 /**
@@ -8,6 +8,21 @@ import { extractErrorMessage } from './utils'
  * Prevents duplicate concurrent requests for the same resource
  */
 const inFlightRequests = new Map<string, Promise<unknown>>()
+
+/**
+ * Safely parse JSON from a Response, returning a clear error on HTML/invalid responses
+ */
+async function safeJsonParse<T>(response: Response): Promise<T> {
+  const text = await response.text()
+  try {
+    return JSON.parse(text) as T
+  } catch {
+    throw new AppError(
+      ErrorType.UNKNOWN,
+      `Server returned an unexpected response (${response.status}). Please try again later.`
+    )
+  }
+}
 
 /**
  * Helper to handle HTTP error responses
@@ -87,28 +102,7 @@ export async function fetchTranscriptWithYtDlp(
   videoId: string,
   options?: { language?: string; format?: string; writeAutoSubs?: boolean }
 ): Promise<TranscriptResponse> {
-  try {
-    const response = await fetch('/api/transcript/ytdlp', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ videoId, options }),
-    })
-
-    const data: TranscriptResponse = await response.json()
-
-    if (!response.ok) {
-      return handleHttpError(response, data, {
-        videoId,
-        defaultError: 'Failed to fetch transcript'
-      })
-    }
-
-    return data
-  } catch (error) {
-    return handleFetchError(error)
-  }
+  return fetchTranscriptViaYtDlp({ videoId }, options)
 }
 
 /**
@@ -120,19 +114,29 @@ export async function fetchTranscriptByUrlWithYtDlp(
   url: string,
   options?: { language?: string; format?: string; writeAutoSubs?: boolean }
 ): Promise<TranscriptResponse> {
+  return fetchTranscriptViaYtDlp({ url }, options)
+}
+
+/**
+ * Shared implementation for yt-dlp transcript fetching
+ */
+async function fetchTranscriptViaYtDlp(
+  identifier: { videoId?: string; url?: string },
+  options?: { language?: string; format?: string; writeAutoSubs?: boolean }
+): Promise<TranscriptResponse> {
   try {
     const response = await fetch('/api/transcript/ytdlp', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ url, options }),
+      body: JSON.stringify({ ...identifier, options }),
     })
 
-    const data: TranscriptResponse = await response.json()
+    const data: TranscriptResponse = await safeJsonParse(response)
 
     if (!response.ok) {
-      const videoId = url.match(/[?&]v=([^&]+)/)?.[1] || 'unknown'
+      const videoId = identifier.videoId || identifier.url?.match(/[?&]v=([^&]+)/)?.[1] || 'unknown'
       return handleHttpError(response, data, {
         videoId,
         defaultError: 'Failed to fetch transcript'
@@ -165,7 +169,7 @@ export async function discoverVideos(
       body: JSON.stringify({ url, type, maxVideos }),
     })
 
-    const data: DiscoverResponse = await response.json()
+    const data: DiscoverResponse = await safeJsonParse(response)
 
     if (!response.ok) {
       const errorMessage = data.error || 'Failed to discover videos'
@@ -218,7 +222,7 @@ export async function fetchChannelInfoFromVideo(
         body: JSON.stringify({ videoUrl }),
       })
 
-      const data: ChannelInfoResponse = await response.json()
+      const data: ChannelInfoResponse = await safeJsonParse(response)
 
       if (!response.ok) {
         const errorMessage = data.error || 'Failed to fetch channel information'
@@ -278,12 +282,13 @@ export async function generateAISummary(
       }),
     })
 
-    const data: AISummaryApiResponse = await response.json()
+    const data: AISummaryApiResponse = await safeJsonParse(response)
 
     if (!response.ok) {
-      handleHttpError(response, data, {
-        defaultError: 'Failed to generate AI summary'
-      })
+      throw new AppError(
+        ErrorType.UNKNOWN,
+        data.error || 'Failed to generate AI summary'
+      )
     }
 
     if (!data.success || !data.summaries) {
@@ -297,6 +302,73 @@ export async function generateAISummary(
   } catch (error) {
     if (error instanceof AppError) throw error
     throw new AppError(ErrorType.UNKNOWN, extractErrorMessage(error, 'Failed to generate AI summary'))
+  }
+}
+
+/**
+ * Response from the channel episodes endpoint
+ */
+export interface ChannelEpisodesResponse {
+  success: boolean
+  data?: {
+    channel: {
+      id: string
+      name: string
+      url: string
+    }
+    episodes: Array<{
+      videoId: string
+      title: string
+      publishedAt: string
+      url: string
+      thumbnail: string | null
+      duration: number | null
+    }>
+  }
+  error?: string
+  type?: string
+}
+
+/**
+ * Fetches recent episodes from a YouTube channel URL
+ * @param channelUrl - YouTube channel URL
+ * @param maxEpisodes - Maximum number of episodes to return (default: 2)
+ */
+export async function fetchChannelEpisodes(
+  channelUrl: string,
+  maxEpisodes: number = 2
+): Promise<ChannelEpisodesResponse> {
+  try {
+    const response = await fetch('/api/channel/episodes', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ channelUrl, maxEpisodes }),
+    })
+
+    const data: ChannelEpisodesResponse = await safeJsonParse(response)
+
+    if (!response.ok) {
+      return {
+        success: false,
+        error: data.error || 'Failed to fetch channel episodes',
+        type: data.type,
+      }
+    }
+
+    return data
+  } catch (error) {
+    if (error instanceof TypeError && error.message.includes('fetch')) {
+      return {
+        success: false,
+        error: 'Network connection lost. Check your connection and try again.',
+        type: 'NETWORK_ERROR',
+      }
+    }
+    return {
+      success: false,
+      error: extractErrorMessage(error, 'Failed to fetch channel episodes'),
+      type: 'UNKNOWN',
+    }
   }
 }
 
@@ -315,12 +387,13 @@ export interface ProviderConfigResponse {
 export async function fetchProviderConfig(): Promise<Record<LLMProviderKey, boolean>> {
   try {
     const response = await fetch('/api/ai-summary/config')
-    const data: ProviderConfigResponse = await response.json()
+    const data: ProviderConfigResponse = await safeJsonParse(response)
     if (data.success && data.providers) {
       return data.providers
     }
-  } catch {
+  } catch (error) {
     // Fail-open: if config endpoint is unreachable, assume all configured
+    console.warn('[fetchProviderConfig] Config endpoint unreachable, assuming all providers configured:', error)
   }
   return { anthropic: true, 'google-gemini': true, perplexity: true }
 }

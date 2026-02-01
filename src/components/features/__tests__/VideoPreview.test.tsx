@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { VideoPreview, VideoMetadata } from '../VideoPreview'
 
@@ -15,19 +15,19 @@ const mockMetadata: VideoMetadata = {
 
 describe('VideoPreview', () => {
   it('renders loading state', () => {
-    render(<VideoPreview isLoading={true} />)
+    render(<VideoPreview metadata={null} isLoading={true} />)
     
     expect(screen.getByText(/loading video information/i)).toBeInTheDocument()
   })
 
   it('renders error state', () => {
-    render(<VideoPreview error="Video not found" />)
+    render(<VideoPreview metadata={null} error="Video not found" />)
     
     expect(screen.getByText('Video not found')).toBeInTheDocument()
   })
 
   it('returns null when no metadata and not loading', () => {
-    const { container } = render(<VideoPreview />)
+    const { container } = render(<VideoPreview metadata={null} />)
     expect(container.firstChild).toBeNull()
   })
 

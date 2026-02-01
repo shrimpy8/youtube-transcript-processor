@@ -111,7 +111,7 @@ export function UrlInput({
               onClearDetectionMessage()
             }
           }}
-          onPaste={(e) => {
+          onPaste={() => {
             // Handle paste event - the onChange will also fire, but we want to clear external URL immediately
             if (externalUrl && onExternalUrlCleared) {
               onExternalUrlCleared()
@@ -173,7 +173,9 @@ export function UrlInput({
           disabled={!isValid || isValidating}
           className="flex-1 sm:flex-initial"
         >
-          Get Transcript
+          {validationResult?.type === 'channel' ? 'Browse Channel' :
+           validationResult?.type === 'playlist' ? 'View Playlist' :
+           'Get Transcript'}
         </Button>
         {url && (
           <Button

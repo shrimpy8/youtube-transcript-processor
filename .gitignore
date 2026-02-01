@@ -12,6 +12,8 @@
 
 # testing
 /coverage
+playwright-report/
+test-results/
 
 # next.js
 /.next/
@@ -48,3 +50,6 @@ docs/PROMPT_TUNING_LOG.md
 
 # AI summary test outputs
 ai_summary/*.txt
+
+# Feature development artifacts (docs, screenshots, analysis)
+/features/

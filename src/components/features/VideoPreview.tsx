@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -12,7 +12,7 @@ import { TranscriptViewer } from './TranscriptViewer'
 import { TranscriptStats } from './TranscriptStats'
 import { ExportControls } from './ExportControls'
 import { AISummary } from './AISummary'
-import { ProcessedTranscript } from '@/types'
+import { ProcessedTranscript, AISummaryResponse } from '@/types'
 import { formatDuration as formatDurationUtil, formatDate as formatDateUtil } from '@/lib/date-utils'
 
 export interface VideoMetadata {
@@ -37,6 +37,8 @@ interface VideoPreviewProps {
   onReProcess?: () => void
   channelUrl?: string | null
   playlistUrl?: string | null
+  activeTabOverride?: string | null
+  preGeneratedSummaries?: AISummaryResponse[] | null
 }
 
 /**
@@ -52,9 +54,18 @@ export function VideoPreview({
   transcript,
   onReProcess,
   channelUrl,
-  playlistUrl
+  playlistUrl,
+  activeTabOverride,
+  preGeneratedSummaries
 }: VideoPreviewProps) {
   const [activeTab, setActiveTab] = useState('video')
+
+  // Allow parent to override the active tab (e.g., after pipeline completion)
+  useEffect(() => {
+    if (activeTabOverride) {
+      setActiveTab(activeTabOverride)
+    }
+  }, [activeTabOverride])
 
   const handleTabChange = (value: string) => {
     setActiveTab(value)
@@ -125,11 +136,11 @@ export function VideoPreview({
       <CardHeader>
         {/* Video metadata at the top right */}
         {metadata && (
-          <div className="flex flex-col items-end gap-2 text-right">
+          <div className="flex flex-col gap-2">
             {metadata.title && (
               <CardTitle className="line-clamp-2 text-lg">{metadata.title}</CardTitle>
             )}
-            <div className="flex flex-wrap items-center justify-end gap-3 text-sm text-muted-foreground">
+            <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
               {metadata.publishedAt && (
                 <span>{formatDate(metadata.publishedAt)}</span>
               )}
@@ -146,10 +157,10 @@ export function VideoPreview({
       <CardContent>
         <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
           <TabsList className={`grid w-full ${gridClass}`}>
-            <TabsTrigger value="video"><Play className="h-4 w-4" />Video</TabsTrigger>
-            {transcript && <TabsTrigger value="ai-summary"><Sparkles className="h-4 w-4" />AI Summary</TabsTrigger>}
-            {showChannelTab && <TabsTrigger value="channel"><User className="h-4 w-4" />Channel</TabsTrigger>}
-            {showPlaylistTab && <TabsTrigger value="playlist"><ListVideo className="h-4 w-4" />Playlist</TabsTrigger>}
+            <TabsTrigger value="video"><Play className="h-4 w-4" /><span className="hidden sm:inline">Video</span></TabsTrigger>
+            {transcript && <TabsTrigger value="ai-summary"><Sparkles className="h-4 w-4" /><span className="hidden sm:inline">AI Summary</span></TabsTrigger>}
+            {showChannelTab && <TabsTrigger value="channel"><User className="h-4 w-4" /><span className="hidden sm:inline">Channel</span></TabsTrigger>}
+            {showPlaylistTab && <TabsTrigger value="playlist"><ListVideo className="h-4 w-4" /><span className="hidden sm:inline">Playlist</span></TabsTrigger>}
           </TabsList>
           
           {/* Video Tab - shows preview and transcript */}
@@ -248,6 +259,7 @@ export function VideoPreview({
                 transcript={transcript}
                 videoTitle={metadata.title}
                 videoUrl={metadata.url}
+                preGeneratedSummaries={preGeneratedSummaries}
               />
             </TabsContent>
           )}

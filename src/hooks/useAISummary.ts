@@ -217,6 +217,40 @@ export function useAISummary() {
   }, [])
 
   /**
+   * Hydrates the hook with pre-generated summaries (e.g. from pipeline).
+   * Merges incoming summaries into state and sets hasGenerated = true.
+   */
+  const hydrate = useCallback((summaries: AISummaryResponse[]) => {
+    if (!summaries || summaries.length === 0) return
+    setState(prev => {
+      const newErrors: Record<string, string | null> = { ...prev.errors }
+      const merged = [...prev.summaries]
+
+      summaries.forEach(s => {
+        // Replace existing summary for same provider, or add new
+        const idx = merged.findIndex(existing => existing.provider === s.provider)
+        if (idx >= 0) {
+          merged[idx] = s
+        } else {
+          merged.push(s)
+        }
+        if (s.success) {
+          newErrors[s.provider] = null
+        } else {
+          newErrors[s.provider] = s.error || 'Failed to generate summary'
+        }
+      })
+
+      return {
+        summaries: merged,
+        loading: {},
+        errors: newErrors,
+        hasGenerated: true,
+      }
+    })
+  }, [])
+
+  /**
    * Resets the summary state to initial values
    * Clears all summaries, loading states, errors, and resets hasGenerated flag
    */
@@ -282,6 +316,7 @@ export function useAISummary() {
     hasGenerated: state.hasGenerated,
     isLoading,
     generateSummary,
+    hydrate,
     reset,
     getSummaryForProvider,
     hasError,

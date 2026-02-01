@@ -3,17 +3,17 @@ import { getPlaylistVideos, getChannelVideos } from '@/lib/ytdlp-service'
 import { validateAndParseUrl } from '@/lib/youtube-validator'
 import { VideoMetadata, ChannelInfo } from '@/types'
 import { mapYtDlpError } from '@/lib/error-mapper'
-import { handleApiError, createSuccessResponse } from '@/lib/api-helpers'
-import { createRateLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limiter'
+import { handleApiError, createSuccessResponse, generateRequestId } from '@/lib/api-helpers'
+import { createRateLimiter, getClientIp, rateLimitResponse, RATE_LIMIT_PRESETS } from '@/lib/rate-limiter'
 
-/** Rate limiter: 10 requests per minute per IP */
-const limiter = createRateLimiter({ maxRequests: 10, windowMs: 60_000 })
+const limiter = createRateLimiter(RATE_LIMIT_PRESETS.standard)
 
 /**
  * POST /api/discover
  * Discovers videos from a YouTube playlist or channel
  */
 export async function POST(request: NextRequest) {
+  const requestId = generateRequestId()
   try {
     const clientIp = getClientIp(request)
     if (!limiter.check(clientIp)) {
@@ -80,13 +80,13 @@ export async function POST(request: NextRequest) {
 
       return createSuccessResponse({
         data: info,
-      })
+      }, 200, requestId)
     } catch (error: unknown) {
       // Map yt-dlp errors using error mapper
       throw mapYtDlpError(error)
     }
   } catch (error: unknown) {
-    return handleApiError(error, 'Failed to discover videos')
+    return handleApiError(error, 'Failed to discover videos', requestId)
   }
 }
 

@@ -400,7 +400,11 @@ describe('edge-case-handlers', () => {
       expect(result.issues.length).toBeGreaterThan(0)
       expect(result.issues.some((issue) => issue.includes('Clipboard'))).toBe(true)
 
-      navigator.clipboard = originalClipboard
+      Object.defineProperty(navigator, 'clipboard', {
+        value: originalClipboard,
+        writable: true,
+        configurable: true,
+      })
       document.execCommand = originalExecCommand
     })
 
@@ -427,8 +431,8 @@ describe('edge-case-handlers', () => {
       // In test environment, APIs should be available (unless mocked)
       // If APIs are available, should be compatible
       // If not available (due to previous test mocking), that's also valid
-      if (navigator.clipboard || document.execCommand) {
-        if (window.fetch) {
+      if (navigator.clipboard || typeof document.execCommand === 'function') {
+        if (typeof window.fetch === 'function') {
           expect(result.isCompatible).toBe(true)
           expect(result.issues.length).toBe(0)
         }
@@ -436,14 +440,16 @@ describe('edge-case-handlers', () => {
       
       // Restore
       if (originalClipboard !== navigator.clipboard) {
-        // @ts-expect-error - Restoring
-        navigator.clipboard = originalClipboard
+        Object.defineProperty(navigator, 'clipboard', {
+          value: originalClipboard,
+          writable: true,
+          configurable: true,
+        })
       }
       if (originalFetch !== window.fetch) {
         window.fetch = originalFetch
       }
       if (originalExecCommand !== document.execCommand) {
-        // @ts-expect-error - Restoring
         document.execCommand = originalExecCommand
       }
     })

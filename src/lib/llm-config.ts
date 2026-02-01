@@ -28,7 +28,23 @@ export interface ProviderConfig {
   defaultModelName: string
   /** Maximum output tokens for summary generation */
   maxOutputTokens: number
+  /** API version header (Anthropic only) */
+  apiVersion?: string
 }
+
+/**
+ * Shared LLM request defaults
+ */
+export const LLM_DEFAULTS = {
+  /** Temperature for summary generation */
+  temperature: 0.7,
+  /** Maximum retry attempts for transient failures */
+  maxRetries: 3,
+  /** Initial delay (ms) before first retry */
+  initialRetryDelayMs: 1000,
+  /** Timeout (ms) for each LLM API call */
+  fetchTimeoutMs: 60_000,
+} as const
 
 /**
  * Provider configuration map
@@ -44,6 +60,7 @@ export const PROVIDER_CONFIG: Record<LLMProviderKey, ProviderConfig> = {
     defaultModel: 'claude-sonnet-4-5-20250929',
     defaultModelName: 'Anthropic Sonnet 4.5',
     maxOutputTokens: 16384,
+    apiVersion: '2023-06-01',
   },
   'google-gemini': {
     apiKeyEnv: 'GOOGLE_GEMINI_API_KEY',

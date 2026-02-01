@@ -14,7 +14,7 @@ test.describe('Error Scenarios', () => {
         route.abort('failed')
       })
 
-      const input = page.getByPlaceholderText(/enter youtube url/i)
+      const input = page.getByPlaceholder(/enter youtube url/i)
       await input.fill('https://www.youtube.com/watch?v=dQw4w9WgXcQ')
       await page.waitForTimeout(500)
 
@@ -60,7 +60,7 @@ test.describe('Error Scenarios', () => {
         }
       })
 
-      const input = page.getByPlaceholderText(/enter youtube url/i)
+      const input = page.getByPlaceholder(/enter youtube url/i)
       await input.fill('https://www.youtube.com/watch?v=dQw4w9WgXcQ')
       await page.waitForTimeout(500)
 
@@ -87,7 +87,7 @@ test.describe('Error Scenarios', () => {
 
   test.describe('Invalid URL', () => {
     test('should display error message for invalid URL', async ({ page }) => {
-      const input = page.getByPlaceholderText(/enter youtube url/i)
+      const input = page.getByPlaceholder(/enter youtube url/i)
 
       // Type invalid URL
       await input.fill('not a valid url')
@@ -99,7 +99,7 @@ test.describe('Error Scenarios', () => {
     })
 
     test('should allow correction after invalid URL', async ({ page }) => {
-      const input = page.getByPlaceholderText(/enter youtube url/i)
+      const input = page.getByPlaceholder(/enter youtube url/i)
 
       // Type invalid URL
       await input.fill('not a valid url')
@@ -131,7 +131,7 @@ test.describe('Error Scenarios', () => {
         })
       })
 
-      const input = page.getByPlaceholderText(/enter youtube url/i)
+      const input = page.getByPlaceholder(/enter youtube url/i)
       await input.fill('https://www.youtube.com/watch?v=dQw4w9WgXcQ')
       await page.waitForTimeout(500)
 
@@ -159,7 +159,7 @@ test.describe('Error Scenarios', () => {
         })
       })
 
-      const input = page.getByPlaceholderText(/enter youtube url/i)
+      const input = page.getByPlaceholder(/enter youtube url/i)
       await input.fill('https://www.youtube.com/watch?v=dQw4w9WgXcQ')
       await page.waitForTimeout(500)
 
@@ -195,7 +195,7 @@ test.describe('Error Scenarios', () => {
         })
       })
 
-      const input = page.getByPlaceholderText(/enter youtube url/i)
+      const input = page.getByPlaceholder(/enter youtube url/i)
       await input.fill('https://www.youtube.com/watch?v=dQw4w9WgXcQ')
       await page.waitForTimeout(500)
 
@@ -208,7 +208,7 @@ test.describe('Error Scenarios', () => {
       await page.waitForTimeout(2000)
 
       // Page should not crash
-      await expect(page.getByPlaceholderText(/enter youtube url/i)).toBeVisible()
+      await expect(page.getByPlaceholder(/enter youtube url/i)).toBeVisible()
     })
 
     test('should display performance warning for very long transcript', async ({
@@ -230,7 +230,7 @@ test.describe('Error Scenarios', () => {
         })
       })
 
-      const input = page.getByPlaceholderText(/enter youtube url/i)
+      const input = page.getByPlaceholder(/enter youtube url/i)
       await input.fill('https://www.youtube.com/watch?v=dQw4w9WgXcQ')
       await page.waitForTimeout(500)
 
@@ -260,7 +260,7 @@ test.describe('Error Scenarios', () => {
       await page.goto('/')
 
       // Check that the page loads without errors
-      await expect(page.getByPlaceholderText(/enter youtube url/i)).toBeVisible()
+      await expect(page.getByPlaceholder(/enter youtube url/i)).toBeVisible()
 
       // Error boundary should be present in the component tree
       // (This is a structural check - actual error triggering would require
@@ -282,7 +282,7 @@ test.describe('Error Scenarios', () => {
         })
       })
 
-      const input = page.getByPlaceholderText(/enter youtube url/i)
+      const input = page.getByPlaceholder(/enter youtube url/i)
       await input.fill('https://www.youtube.com/watch?v=dQw4w9WgXcQ')
       await page.waitForTimeout(500)
 
@@ -310,7 +310,7 @@ test.describe('Error Scenarios', () => {
         })
       })
 
-      const input = page.getByPlaceholderText(/enter youtube url/i)
+      const input = page.getByPlaceholder(/enter youtube url/i)
       await input.fill('https://www.youtube.com/watch?v=dQw4w9WgXcQ')
       await page.waitForTimeout(500)
 
@@ -332,7 +332,7 @@ test.describe('Error Scenarios', () => {
         route.abort('failed')
       })
 
-      const input = page.getByPlaceholderText(/enter youtube url/i)
+      const input = page.getByPlaceholder(/enter youtube url/i)
       await input.fill('https://www.youtube.com/watch?v=dQw4w9WgXcQ')
       await page.waitForTimeout(500)
 

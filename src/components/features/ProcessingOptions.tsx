@@ -9,6 +9,8 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Settings, SlidersHorizontal, Info } from 'lucide-react'
 import { useProcessingOptions } from '@/hooks/useProcessingOptions'
 import { UrlInput } from '@/components/features/UrlInput'
+import { FavoriteChannels } from '@/components/features/FavoriteChannels'
+import { FavoriteChannelEpisode } from '@/types'
 
 interface UrlDetectionInfo {
   type: 'channel' | 'playlist'
@@ -23,6 +25,7 @@ interface ProcessingOptionsProps {
   externalUrl?: string | null
   onExternalUrlCleared?: () => void
   onClearDetectionMessage?: () => void
+  onSummarize?: (episode: FavoriteChannelEpisode) => void
 }
 
 interface ToggleOption {
@@ -67,9 +70,9 @@ const TOGGLE_OPTIONS: ToggleOption[] = [
 /**
  * Processing options panel component
  */
-export function ProcessingOptions({ onSubmit, detectionMessage, onCopyUrl, externalUrl, onExternalUrlCleared, onClearDetectionMessage }: ProcessingOptionsProps) {
+export function ProcessingOptions({ onSubmit, detectionMessage, onCopyUrl, externalUrl, onExternalUrlCleared, onClearDetectionMessage, onSummarize }: ProcessingOptionsProps) {
   const { options, updateOption } = useProcessingOptions()
-  const [activeTab, setActiveTab] = useState('')
+  const [activeTab, setActiveTab] = useState('settings')
   const [expandedToggles, setExpandedToggles] = useState<Set<string>>(new Set())
   const [localSegmentLength, setLocalSegmentLength] = useState(String(options.maxSegmentLength))
 
@@ -106,7 +109,7 @@ export function ProcessingOptions({ onSubmit, detectionMessage, onCopyUrl, exter
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* URL Input */}
+        {/* URL Input — primary action, shown first */}
         {onSubmit && (
           <div className="pb-4 border-b">
             <UrlInput
@@ -120,6 +123,11 @@ export function ProcessingOptions({ onSubmit, detectionMessage, onCopyUrl, exter
             />
           </div>
         )}
+
+        {/* Favorite Channels */}
+        <div className="pb-4 border-b">
+          <FavoriteChannels onSummarize={onSummarize} />
+        </div>
 
         {/* Tabbed Settings */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>

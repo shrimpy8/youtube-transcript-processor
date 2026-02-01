@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { ProcessedTranscript, SummaryStyle } from '@/types'
+import { useState, useEffect, useRef } from 'react'
+import { ProcessedTranscript, SummaryStyle, AISummaryResponse } from '@/types'
 import { LLMProvider } from '@/types'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -25,26 +25,41 @@ interface AISummaryProps {
   videoTitle?: string
   /** YouTube video URL for timestamp links in bullets style */
   videoUrl?: string
+  /** Pre-generated summaries from pipeline (auto-hydrated on mount) */
+  preGeneratedSummaries?: AISummaryResponse[] | null
 }
 
 /**
  * AI Summary component for generating and displaying LLM summaries
  */
-export function AISummary({ transcript, videoTitle, videoUrl }: AISummaryProps) {
+export function AISummary({ transcript, videoTitle, videoUrl, preGeneratedSummaries }: AISummaryProps) {
   const [selectedProvider, setSelectedProvider] = useState<LLMProvider>('anthropic')
   const [selectedStyle, setSelectedStyle] = useState<SummaryStyle>('bullets')
   const [copiedProvider, setCopiedProvider] = useState<string | null>(null)
+  const [confirmingReset, setConfirmingReset] = useState(false)
+  const hydratedRef = useRef(false)
 
   const {
     hasGenerated,
     isLoading,
     generateSummary,
+    hydrate,
     reset,
     getSummaryForProvider,
     hasError,
     getError,
     isProviderLoading,
   } = useAISummary()
+
+  // Auto-hydrate pre-generated summaries from pipeline (once)
+  useEffect(() => {
+    if (preGeneratedSummaries && preGeneratedSummaries.length > 0 && !hydratedRef.current) {
+      hydratedRef.current = true
+      // Auto-select "all" provider to show tabbed view of all results
+      setSelectedProvider('all')
+      hydrate(preGeneratedSummaries)
+    }
+  }, [preGeneratedSummaries, hydrate])
 
   const {
     isProviderConfigured,
@@ -128,12 +143,12 @@ export function AISummary({ transcript, videoTitle, videoUrl }: AISummaryProps) 
           )}
 
           <div className="space-y-3">
-            <Label>Select Commercial LLM</Label>
+            <Label>Choose AI Provider</Label>
             <RadioGroup
               value={selectedProvider}
               onValueChange={(value) => setSelectedProvider(value as LLMProvider)}
               disabled={isLoading}
-              className="grid grid-cols-4 gap-2"
+              className="grid grid-cols-2 sm:grid-cols-4 gap-2"
             >
               {providerOptions.map(option => {
                 const Icon = option.icon
@@ -236,18 +251,35 @@ export function AISummary({ transcript, videoTitle, videoUrl }: AISummaryProps) 
                 )}
               </Button>
 
-              {hasGenerated && (
+              {hasGenerated && !confirmingReset && (
                 <Button
-                  onClick={() => {
-                    if (window.confirm('Clear all generated summaries?')) {
-                      reset()
-                    }
-                  }}
+                  onClick={() => setConfirmingReset(true)}
                   variant="outline"
                   disabled={isLoading}
                 >
                   Reset
                 </Button>
+              )}
+              {confirmingReset && (
+                <>
+                  <Button
+                    onClick={() => {
+                      reset()
+                      setConfirmingReset(false)
+                    }}
+                    variant="destructive"
+                    size="sm"
+                  >
+                    Confirm Reset
+                  </Button>
+                  <Button
+                    onClick={() => setConfirmingReset(false)}
+                    variant="ghost"
+                    size="sm"
+                  >
+                    Cancel
+                  </Button>
+                </>
               )}
             </div>
 

@@ -26,6 +26,14 @@ let ytDlpWrapInstance: YTDlpWrap | null = null
  */
 const logger = createLogger('ytdlp-service')
 
+/** Common yt-dlp arguments for JSON metadata extraction */
+const YTDLP_JSON_ARGS = ['--dump-json', '--no-warnings', '--quiet', '--no-playlist'] as const
+
+/** Extract video ID from a URL, returning 'unknown' if not found */
+function extractVideoIdOrUnknown(url: string): string {
+  return extractVideoIdFromUrl(url) || url.match(/(?:v=|\/)([a-zA-Z0-9_-]{11})/)?.[1] || 'unknown'
+}
+
 /**
  * Get or create yt-dlp-wrap instance
  */
@@ -119,8 +127,7 @@ export async function downloadSubtitles(
     const fullUrl = normalizeVideoUrl(videoUrl)
 
     // Extract video ID for filename
-    const videoIdMatch = fullUrl.match(/(?:v=|\/)([a-zA-Z0-9_-]{11})/)
-    const videoId = videoIdMatch ? videoIdMatch[1] : 'video'
+    const videoId = extractVideoIdOrUnknown(fullUrl) === 'unknown' ? 'video' : extractVideoIdOrUnknown(fullUrl)
     logger.debug('Extracted video ID', { videoId, fullUrl })
 
     // Build yt-dlp arguments
@@ -222,9 +229,8 @@ export async function downloadSubtitles(
     })
 
     // Extract video ID for error context
-    const videoIdMatch = videoUrl.match(/(?:v=|\/)([a-zA-Z0-9_-]{11})/)
-    const videoId = videoIdMatch ? videoIdMatch[1] : 'unknown'
-    
+    const videoId = extractVideoIdOrUnknown(videoUrl)
+
     // Map yt-dlp errors using error mapper
     throw mapYtDlpError(error, { videoId })
   } finally {
@@ -256,13 +262,7 @@ export async function getVideoInfo(videoUrl: string): Promise<YtDlpVideoInfo> {
   logger.debug('Normalized video URL', { original: videoUrl, normalized: fullUrl })
 
   try {
-    const args = [
-      fullUrl,
-      '--dump-json',
-      '--no-warnings',
-      '--quiet',
-      '--no-playlist', // Only get single video info
-    ]
+    const args = [fullUrl, ...YTDLP_JSON_ARGS]
     logger.debug('yt-dlp command args', { args })
 
     logger.info('Executing yt-dlp command for video info')
@@ -307,9 +307,8 @@ export async function getVideoInfo(videoUrl: string): Promise<YtDlpVideoInfo> {
     })
     
     // Extract video ID for error context
-    const videoIdMatch = fullUrl.match(/(?:v=|\/)([a-zA-Z0-9_-]{11})/)
-    const videoId = videoIdMatch ? videoIdMatch[1] : 'unknown'
-    
+    const videoId = extractVideoIdOrUnknown(fullUrl)
+
     // Map yt-dlp errors using error mapper
     throw mapYtDlpError(error, { videoId })
   }
@@ -325,14 +324,8 @@ async function fetchVideoMetadata(videoUrl: string): Promise<{ viewCount?: numbe
     const ytDlp = getYtDlpInstance()
     const fullUrl = normalizeVideoUrl(videoUrl)
     
-    const args = [
-      fullUrl,
-      '--dump-json',
-      '--no-warnings',
-      '--quiet',
-      '--no-playlist',
-    ]
-    
+    const args = [fullUrl, ...YTDLP_JSON_ARGS]
+
     const output = await ytDlp.execPromise(args)
     const outputStr = extractOutputString(output as YtDlpOutput)
     const info: YtDlpJsonInfo = JSON.parse(outputStr.trim())
@@ -548,13 +541,7 @@ export async function getChannelInfoFromVideo(videoUrl: string): Promise<{
   logger.debug('Normalized video URL', { original: videoUrl, normalized: fullUrl })
 
   try {
-    const args = [
-      fullUrl,
-      '--dump-json',
-      '--no-warnings',
-      '--quiet',
-      '--no-playlist',
-    ]
+    const args = [fullUrl, ...YTDLP_JSON_ARGS]
     logger.debug('yt-dlp command args', { args })
 
     logger.info('Executing yt-dlp command for channel info')
@@ -674,9 +661,8 @@ export async function getChannelInfoFromVideo(videoUrl: string): Promise<{
     })
     
     // Extract video ID for error context
-    const videoIdMatch = fullUrl.match(/(?:v=|\/)([a-zA-Z0-9_-]{11})/)
-    const videoId = videoIdMatch ? videoIdMatch[1] : 'unknown'
-    
+    const videoId = extractVideoIdOrUnknown(fullUrl)
+
     // Map yt-dlp errors using error mapper
     throw mapYtDlpError(error, { videoId })
   }

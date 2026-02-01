@@ -176,6 +176,22 @@ export function AISummaryCard({
           <div className="max-w-none text-sm leading-relaxed">
             <ReactMarkdown
               remarkPlugins={[remarkGfm]}
+              allowedElements={[
+                'p', 'ul', 'ol', 'li', 'strong', 'em', 'a', 'del',
+                'h1', 'h2', 'h3', 'h4',
+                'code', 'pre', 'blockquote', 'br', 'hr',
+                'table', 'thead', 'tbody', 'tr', 'th', 'td',
+              ]}
+              urlTransform={(url) => {
+                // Only allow YouTube URLs and anchor links in rendered markdown
+                if (url.startsWith('#') || url.startsWith('/')) return url
+                try {
+                  const parsed = new URL(url)
+                  const allowed = ['youtube.com', 'www.youtube.com', 'youtu.be']
+                  if (allowed.some(d => parsed.hostname === d)) return url
+                } catch { /* invalid URL */ }
+                return ''
+              }}
               components={{
                 ul: ({ children }) => (
                   <ul className="list-disc pl-5 space-y-3">

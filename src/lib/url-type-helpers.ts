@@ -1,5 +1,4 @@
-import { discoverVideos, DiscoverResponse } from './api-client'
-import { extractErrorMessage } from './utils'
+import { discoverVideos } from './api-client'
 
 /**
  * Helper functions for handling different URL types (channel, playlist, video)

@@ -5,21 +5,21 @@ test.describe('Browser Compatibility', () => {
     test.skip(browserName !== 'chromium', 'Chrome-specific test')
     
     await page.goto('/')
-    await expect(page.getByPlaceholderText(/enter youtube url/i)).toBeVisible()
+    await expect(page.getByPlaceholder(/enter youtube url/i)).toBeVisible()
   })
 
   test('should load in Firefox', async ({ page, browserName }) => {
     test.skip(browserName !== 'firefox', 'Firefox-specific test')
     
     await page.goto('/')
-    await expect(page.getByPlaceholderText(/enter youtube url/i)).toBeVisible()
+    await expect(page.getByPlaceholder(/enter youtube url/i)).toBeVisible()
   })
 
   test('should load in Safari', async ({ page, browserName }) => {
     test.skip(browserName !== 'webkit', 'Safari-specific test')
     
     await page.goto('/')
-    await expect(page.getByPlaceholderText(/enter youtube url/i)).toBeVisible()
+    await expect(page.getByPlaceholder(/enter youtube url/i)).toBeVisible()
   })
 
   test('should have required JavaScript features', async ({ page }) => {

@@ -13,7 +13,7 @@ test.describe('Mobile Experience', () => {
 
   test('should display correctly on mobile viewport', async ({ page }) => {
     // Check that page loads
-    await expect(page.getByPlaceholderText(/enter youtube url/i)).toBeVisible()
+    await expect(page.getByPlaceholder(/enter youtube url/i)).toBeVisible()
   })
 
   test('should have proper viewport meta tag', async ({ page }) => {
@@ -42,7 +42,7 @@ test.describe('Mobile Experience', () => {
   })
 
   test('should support touch interactions', async ({ page }) => {
-    const input = page.getByPlaceholderText(/enter youtube url/i)
+    const input = page.getByPlaceholder(/enter youtube url/i)
     
     // Simulate touch
     await input.tap()
@@ -67,7 +67,7 @@ test.describe('Mobile Experience', () => {
   })
 
   test('should handle mobile keyboard', async ({ page }) => {
-    const input = page.getByPlaceholderText(/enter youtube url/i)
+    const input = page.getByPlaceholder(/enter youtube url/i)
     
     await input.click()
     
@@ -113,11 +113,11 @@ test.describe('Mobile Experience', () => {
   test('should handle orientation changes', async ({ page }) => {
     // Test portrait orientation
     await page.setViewportSize({ width: 375, height: 667 })
-    await expect(page.getByPlaceholderText(/enter youtube url/i)).toBeVisible()
+    await expect(page.getByPlaceholder(/enter youtube url/i)).toBeVisible()
 
     // Test landscape orientation
     await page.setViewportSize({ width: 667, height: 375 })
-    await expect(page.getByPlaceholderText(/enter youtube url/i)).toBeVisible()
+    await expect(page.getByPlaceholder(/enter youtube url/i)).toBeVisible()
   })
 
   test('should have safe area support for notched devices', async ({ page }) => {

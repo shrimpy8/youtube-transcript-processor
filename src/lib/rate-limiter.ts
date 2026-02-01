@@ -11,6 +11,16 @@ interface RateLimiterConfig {
 }
 
 /**
+ * Standard rate limit presets (requests per minute)
+ */
+export const RATE_LIMIT_PRESETS = {
+  /** Default for most API routes: 10 req/min */
+  standard: { maxRequests: 10, windowMs: 60_000 } as RateLimiterConfig,
+  /** Higher limit for transcript routes: 20 req/min */
+  transcript: { maxRequests: 20, windowMs: 60_000 } as RateLimiterConfig,
+} as const
+
+/**
  * Creates an in-memory rate limiter per IP.
  * Suitable for single-instance deployments (Vercel serverless functions
  * share module-level state within a warm instance).

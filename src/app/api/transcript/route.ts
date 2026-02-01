@@ -3,16 +3,20 @@ import { YoutubeTranscript } from 'youtube-transcript'
 import { validateAndParseUrl } from '@/lib/youtube-validator'
 import { NoTranscriptError, VideoNotFoundError, NetworkError, RateLimitError } from '@/lib/errors'
 import { TranscriptSegment } from '@/types'
-import { createRateLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limiter'
+import { createRateLimiter, getClientIp, rateLimitResponse, RATE_LIMIT_PRESETS } from '@/lib/rate-limiter'
+import { createLogger } from '@/lib/logger'
+import { generateRequestId } from '@/lib/api-helpers'
 
-/** Rate limiter: 20 requests per minute per IP */
-const limiter = createRateLimiter({ maxRequests: 20, windowMs: 60_000 })
+const logger = createLogger('api/transcript')
+
+const limiter = createRateLimiter(RATE_LIMIT_PRESETS.transcript)
 
 /**
  * POST /api/transcript
  * Fetches transcript for a YouTube video
  */
 export async function POST(request: NextRequest) {
+  const requestId = generateRequestId()
   try {
     const clientIp = getClientIp(request)
     if (!limiter.check(clientIp)) {
@@ -34,6 +38,12 @@ export async function POST(request: NextRequest) {
     let finalVideoId: string | null = null
     
     if (videoId) {
+      if (!/^[a-zA-Z0-9_-]{11}$/.test(videoId)) {
+        return NextResponse.json(
+          { error: 'Invalid video ID format' },
+          { status: 400 }
+        )
+      }
       finalVideoId = videoId
     } else if (url) {
       const validation = validateAndParseUrl(url)
@@ -59,7 +69,7 @@ export async function POST(request: NextRequest) {
       
       // Check if transcript data is empty or invalid
       if (!transcriptData || !Array.isArray(transcriptData) || transcriptData.length === 0) {
-        console.log(`No transcript found for video ${finalVideoId}`)
+        logger.info('No transcript found', { requestId, videoId: finalVideoId })
         throw new NoTranscriptError(finalVideoId)
       }
       
@@ -74,13 +84,14 @@ export async function POST(request: NextRequest) {
 
       // Double-check segments are valid
       if (segments.length === 0) {
-        console.log(`Transformed segments are empty for video ${finalVideoId}`)
+        logger.info('Transformed segments are empty', { requestId, videoId: finalVideoId })
         throw new NoTranscriptError(finalVideoId)
       }
 
-      console.log(`Successfully fetched ${segments.length} segments for video ${finalVideoId}`)
+      logger.info('Successfully fetched transcript', { requestId, videoId: finalVideoId, segmentCount: segments.length })
       return NextResponse.json({
         success: true,
+        requestId,
         data: {
           videoId: finalVideoId,
           segments,
@@ -155,9 +166,10 @@ export async function POST(request: NextRequest) {
     }
 
     // Unknown error — log details server-side, return generic message to client
-    console.error('Transcript fetch error:', error)
+    logger.error('Transcript fetch error', error, { requestId })
     return NextResponse.json(
       {
+        requestId,
         error: 'Failed to fetch transcript',
         type: 'UNKNOWN',
       },

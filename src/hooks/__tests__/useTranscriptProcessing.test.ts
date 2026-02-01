@@ -1,20 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
 import { useTranscriptProcessing } from '../useTranscriptProcessing'
-import { TranscriptSegment } from '@/types'
-
-const mockSegments: TranscriptSegment[] = [
-  { text: 'Hello world', start: 0, duration: 2 },
-  { text: 'This is a test', start: 2, duration: 3 },
-]
-
-const mockOptions = {
-  speakerDetection: true,
-  deduplication: true,
-  removeTimestamps: false,
-  normalizeText: true,
-  maxSegmentLength: 1000,
-}
 
 describe('useTranscriptProcessing', () => {
   it('initializes with idle state', () => {
