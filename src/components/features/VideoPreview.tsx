@@ -67,6 +67,13 @@ export function VideoPreview({
     }
   }, [activeTabOverride])
 
+  // Reset to 'video' tab when video metadata changes (new video loaded)
+  useEffect(() => {
+    if (metadata?.id && !activeTabOverride) {
+      setActiveTab('video')
+    }
+  }, [metadata?.id, activeTabOverride])
+
   const handleTabChange = (value: string) => {
     setActiveTab(value)
   }

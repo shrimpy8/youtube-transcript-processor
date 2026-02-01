@@ -62,7 +62,7 @@ function pipelineReducer(state: PipelineState, action: PipelineAction): Pipeline
         activeTabOverride: null,
       }
     case 'CLOSE':
-      return { ...state, isOpen: false, currentStep: null }
+      return { ...state, isOpen: false, currentStep: null, activeTabOverride: null }
     case 'UPDATE_STEP':
       return {
         ...state,
