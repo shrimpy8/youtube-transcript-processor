@@ -10,11 +10,10 @@ import { SummarizePipelineModal } from "@/components/features/SummarizePipelineM
 import { useProcessingOptions } from "@/hooks/useProcessingOptions"
 import { useTranscriptProcessing } from "@/hooks/useTranscriptProcessing"
 import { useUrlDetection } from "@/hooks/useUrlDetection"
+import { useUrlSubmission } from "@/hooks/useUrlSubmission"
 import { fetchTranscriptByUrlWithYtDlp, generateAISummary, fetchProviderConfig } from "@/lib/api-client"
-import { extractVideoId, validateAndParseUrl } from "@/lib/youtube-validator"
 import { VideoMetadata } from "@/components/features/VideoPreview"
 import { TranscriptSegment, ProcessedTranscript, FavoriteChannelEpisode, PipelineStep, PipelineStepId, AISummaryResponse } from "@/types"
-import { formatClientErrorMessage } from "@/lib/error-utils"
 import { PIPELINE_STEP_LABELS, getYouTubeThumbnailUrl } from "@/lib/constants"
 
 const PIPELINE_STEPS: PipelineStep[] = PIPELINE_STEP_LABELS.map((label, i) => ({
@@ -24,14 +23,6 @@ const PIPELINE_STEPS: PipelineStep[] = PIPELINE_STEP_LABELS.map((label, i) => ({
 }))
 
 export default function Home() {
-  const [videoMetadata, setVideoMetadata] = useState<VideoMetadata | null>(null)
-  const [isFetchingTranscript, setIsFetchingTranscript] = useState(false)
-  const [fetchError, setFetchError] = useState<string | null>(null)
-  const [errorSuggestion, setErrorSuggestion] = useState<string | null>(null)
-  const [rawSegments, setRawSegments] = useState<TranscriptSegment[] | null>(null)
-  const [currentUrl, setCurrentUrl] = useState<string | null>(null)
-  const [urlType, setUrlType] = useState<'video' | 'playlist' | 'channel' | null>(null)
-
   // Tab override for VideoPreview (set after pipeline navigates to AI Summary)
   const [activeTabOverride, setActiveTabOverride] = useState<string | null>(null)
   // Pre-generated summaries from pipeline step 4
@@ -54,104 +45,30 @@ export default function Home() {
   const transcriptProcessing = useTranscriptProcessing()
   const detection = useUrlDetection()
 
-  const handleUrlSubmit = async (url: string) => {
-    setCurrentUrl(url)
-    detection.clearExternalUrl()
-
-    const validation = validateAndParseUrl(url)
-    if (!validation.isValid) {
-      setFetchError(validation.error || 'Invalid YouTube URL')
-      return
-    }
-
-    const detectedType = validation.type
-    setUrlType(detectedType)
-
-    if (detectedType === 'playlist') {
-      setVideoMetadata(null)
-      setRawSegments(null)
-      setFetchError(null)
-      await detection.handlePlaylistDetected(url)
-      return
-    }
-
-    if (detectedType === 'channel') {
-      setVideoMetadata(null)
-      setRawSegments(null)
-      setFetchError(null)
-      await detection.handleChannelDetected(url)
-      return
-    }
-
-    const videoId = extractVideoId(url)
-    if (!videoId) {
-      setFetchError('Invalid video ID')
-      return
-    }
-
-    detection.handleClearDetectionMessage()
-
-    setIsFetchingTranscript(true)
-    setFetchError(null)
-    setErrorSuggestion(null)
-    setVideoMetadata(null)
-    setRawSegments(null)
-    transcriptProcessing.reset()
-
-    try {
-      const response = await fetchTranscriptByUrlWithYtDlp(url)
-
-      if (!response.success) {
-        if (response.suggestion) setErrorSuggestion(response.suggestion)
-        setFetchError(response.error || 'Failed to fetch transcript')
-        return
-      }
-
-      if (!response.data) {
-        throw new Error('No transcript data received from server')
-      }
-
-      if (!response.data.segments || response.data.segments.length === 0) {
-        throw new Error('This video does not have captions available.')
-      }
-
-      setVideoMetadata({
-        id: response.data.videoId,
-        title: response.data.title || `Video ${response.data.videoId}`,
-        url: url,
-        thumbnail: response.data.thumbnail || getYouTubeThumbnailUrl(response.data.videoId),
-        channelTitle: response.data.channelTitle,
-        publishedAt: response.data.publishedAt,
-        duration: response.data.duration,
-      })
-
-      setRawSegments(response.data.segments)
-    } catch (error: unknown) {
-      const errorMessage = formatClientErrorMessage(error, 'Failed to fetch transcript')
-      setFetchError(errorMessage)
-      setVideoMetadata(null)
-      setRawSegments(null)
-    } finally {
-      setIsFetchingTranscript(false)
-    }
-  }
+  const urlSubmission = useUrlSubmission({
+    transcriptProcessingReset: transcriptProcessing.reset,
+    onChannelDetected: detection.handleChannelDetected,
+    onPlaylistDetected: detection.handlePlaylistDetected,
+    clearExternalUrl: detection.clearExternalUrl,
+    clearDetection: detection.handleClearDetectionMessage,
+  })
 
   const handleProcessTranscript = async () => {
-    if (!rawSegments || rawSegments.length === 0) {
-      setFetchError('No transcript segments available.')
+    if (!urlSubmission.rawSegments || urlSubmission.rawSegments.length === 0) {
+      urlSubmission.setFetchError('No transcript segments available.')
       return
     }
-    await transcriptProcessing.process(rawSegments, processingOptions.options)
+    await transcriptProcessing.process(urlSubmission.rawSegments, processingOptions.options)
   }
 
   const handleReProcess = async () => {
-    if (!rawSegments) return
-    await transcriptProcessing.process(rawSegments, processingOptions.options)
+    if (!urlSubmission.rawSegments) return
+    await transcriptProcessing.process(urlSubmission.rawSegments, processingOptions.options)
   }
 
   const handleClearDetectionMessage = () => {
     detection.handleClearDetectionMessage()
-    setUrlType(null)
+    urlSubmission.setUrlType(null)
   }
 
   // ---- Pipeline orchestration ----
@@ -165,9 +82,7 @@ export default function Home() {
   const runPipeline = useCallback(
     async (episode: FavoriteChannelEpisode, startFrom: PipelineStepId = 1) => {
       setCurrentPipelineStep(startFrom)
-      // Local variables to pass data between steps within the same run
-      // (avoids stale closure on React state)
-      let pipelineSegments: TranscriptSegment[] = rawSegments || []
+      let pipelineSegments: TranscriptSegment[] = urlSubmission.rawSegments || []
       let pipelineProcessedResult: ProcessedTranscript | null = null
 
       try {
@@ -184,8 +99,8 @@ export default function Home() {
           }
 
           pipelineSegments = response.data.segments
-          setRawSegments(pipelineSegments)
-          setVideoMetadata({
+          urlSubmission.setRawSegments(pipelineSegments)
+          urlSubmission.setVideoMetadata({
             id: response.data.videoId,
             title: response.data.title || episode.title,
             url: episode.url,
@@ -212,7 +127,6 @@ export default function Home() {
             updateStep(2, { status: 'failed', error: 'Transcript processing failed.' })
             return
           }
-          // Store processed result locally for step 4
           pipelineProcessedResult = processed
           updateStep(2, { status: 'completed' })
         }
@@ -221,7 +135,6 @@ export default function Home() {
         if (startFrom <= 3) {
           updateStep(3, { status: 'in_progress' })
           setCurrentPipelineStep(3)
-          // Metadata already set in step 1
           updateStep(3, { status: 'completed' })
         }
 
@@ -230,7 +143,6 @@ export default function Home() {
           updateStep(4, { status: 'in_progress' })
           setCurrentPipelineStep(4)
 
-          // Check if providers are configured
           const config = await fetchProviderConfig()
           const configuredKeys = (Object.keys(config) as Array<keyof typeof config>).filter(k => config[k])
           if (configuredKeys.length === 0) {
@@ -241,7 +153,6 @@ export default function Home() {
             return
           }
 
-          // Build transcript text from local processed result (avoids stale closure)
           const processedData = pipelineProcessedResult || transcriptProcessing.result
           const transcriptText =
             processedData?.segments.map((s) => s.text).join('\n') || ''
@@ -251,15 +162,12 @@ export default function Home() {
             return
           }
 
-          // Only request configured providers (avoids timeout on unconfigured ones)
           const providerArg = configuredKeys.length === 3 ? 'all' as const : configuredKeys[0]
           let allResults: AISummaryResponse[] = []
 
           if (configuredKeys.length === 1 || configuredKeys.length === 3) {
-            // Single provider or all three — one API call
             allResults = await generateAISummary(transcriptText, providerArg, 'bullets', episode.url)
           } else {
-            // 2 of 3 configured — parallel individual calls
             const results = await Promise.all(
               configuredKeys.map(p => generateAISummary(transcriptText, p, 'bullets', episode.url))
             )
@@ -274,10 +182,8 @@ export default function Home() {
         if (startFrom <= 5) {
           updateStep(5, { status: 'in_progress' })
           setCurrentPipelineStep(5)
-          // Set URL type so the right column shows
-          setUrlType('video')
-          setCurrentUrl(episode.url)
-          // Navigate to AI Summary tab per PRD requirement
+          urlSubmission.setUrlType('video')
+          urlSubmission.setCurrentUrl(episode.url)
           setActiveTabOverride('ai-summary')
           updateStep(5, { status: 'completed' })
         }
@@ -301,17 +207,16 @@ export default function Home() {
         }
       }
     },
-    [updateStep, rawSegments, transcriptProcessing, processingOptions.options, currentPipelineStep]
+    [updateStep, urlSubmission, transcriptProcessing, processingOptions.options, currentPipelineStep]
   )
 
   const handleSummarize = useCallback(
     (episode: FavoriteChannelEpisode) => {
-      // Capture pre-pipeline state for rollback on failure close
       prePipelineStateRef.current = {
-        videoMetadata,
-        rawSegments,
-        urlType,
-        currentUrl,
+        videoMetadata: urlSubmission.videoMetadata,
+        rawSegments: urlSubmission.rawSegments,
+        urlType: urlSubmission.urlType,
+        currentUrl: urlSubmission.currentUrl,
       }
       pipelineEpisodeRef.current = episode
       failCountRef.current = 0
@@ -319,14 +224,13 @@ export default function Home() {
       setPipelineOpen(true)
       runPipeline(episode, 1)
     },
-    [runPipeline, videoMetadata, rawSegments, urlType, currentUrl]
+    [runPipeline, urlSubmission.videoMetadata, urlSubmission.rawSegments, urlSubmission.urlType, urlSubmission.currentUrl]
   )
 
   const handlePipelineRetry = useCallback(() => {
     failCountRef.current++
     const failedStep = pipelineSteps.find((s) => s.status === 'failed')
     if (failedStep && pipelineEpisodeRef.current) {
-      // Reset failed and pending steps
       setPipelineSteps((prev) =>
         prev.map((s) =>
           s.id >= failedStep.id ? { ...s, status: 'pending' as const, error: undefined } : s
@@ -337,14 +241,13 @@ export default function Home() {
   }, [pipelineSteps, runPipeline])
 
   const handlePipelineClose = useCallback(() => {
-    // Roll back partial state changes from failed pipeline
     const hasFailed = pipelineSteps.some((s) => s.status === 'failed')
     if (hasFailed && prePipelineStateRef.current) {
       const prev = prePipelineStateRef.current
-      setVideoMetadata(prev.videoMetadata)
-      setRawSegments(prev.rawSegments)
-      setUrlType(prev.urlType)
-      setCurrentUrl(prev.currentUrl)
+      urlSubmission.setVideoMetadata(prev.videoMetadata)
+      urlSubmission.setRawSegments(prev.rawSegments)
+      urlSubmission.setUrlType(prev.urlType)
+      urlSubmission.setCurrentUrl(prev.currentUrl)
       setActiveTabOverride(null)
       setPipelineSummaries(null)
       transcriptProcessing.reset()
@@ -353,7 +256,7 @@ export default function Home() {
     setPipelineOpen(false)
     failCountRef.current = 0
     pipelineEpisodeRef.current = null
-  }, [pipelineSteps, transcriptProcessing])
+  }, [pipelineSteps, transcriptProcessing, urlSubmission])
 
   return (
     <Container className="py-12">
@@ -363,7 +266,7 @@ export default function Home() {
           {/* Left Column - Inputs */}
           <div className="flex flex-col gap-6">
             <ProcessingOptions
-              onSubmit={handleUrlSubmit}
+              onSubmit={urlSubmission.handleUrlSubmit}
               detectionMessage={detection.detectionMessage}
               onCopyUrl={detection.handleCopyUrl}
               externalUrl={detection.externalUrl}
@@ -375,14 +278,14 @@ export default function Home() {
 
           {/* Right Column - Outputs */}
           <div className="flex flex-col gap-6">
-            {(urlType === 'video' || detection.detectedChannelUrl || detection.detectedPlaylistUrl) ? (
+            {(urlSubmission.urlType === 'video' || detection.detectedChannelUrl || detection.detectedPlaylistUrl) ? (
               <>
                 <VideoPreview
-                  metadata={videoMetadata}
-                  isLoading={isFetchingTranscript || detection.isFetchingChannelInfo || detection.isFetchingPlaylistInfo}
-                  error={fetchError}
-                  errorSuggestion={errorSuggestion}
-                  onProcess={rawSegments ? handleProcessTranscript : undefined}
+                  metadata={urlSubmission.videoMetadata}
+                  isLoading={urlSubmission.isFetchingTranscript || detection.isFetchingChannelInfo || detection.isFetchingPlaylistInfo}
+                  error={urlSubmission.fetchError}
+                  errorSuggestion={urlSubmission.errorSuggestion}
+                  onProcess={urlSubmission.rawSegments ? handleProcessTranscript : undefined}
                   transcript={transcriptProcessing.result}
                   onReProcess={transcriptProcessing.result ? handleReProcess : undefined}
                   onPasteUrl={detection.handleCopyUrl}
@@ -400,7 +303,7 @@ export default function Home() {
                   />
                 )}
 
-                {isFetchingTranscript && (
+                {urlSubmission.isFetchingTranscript && (
                   <LoadingState message="Fetching transcript..." />
                 )}
               </>
@@ -416,7 +319,7 @@ export default function Home() {
                 <p className="text-sm text-muted-foreground mt-1">
                   {transcriptProcessing.error}
                 </p>
-                {rawSegments && (
+                {urlSubmission.rawSegments && (
                   <button
                     type="button"
                     onClick={handleReProcess}
