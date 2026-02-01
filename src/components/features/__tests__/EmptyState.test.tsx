@@ -3,7 +3,7 @@ import { render, screen, fireEvent } from '@testing-library/react'
 import { EmptyState } from '../EmptyState'
 import { NoTranscriptState } from '../NoTranscriptState'
 import { NoVideosState } from '../NoVideosState'
-import { FileText, Video } from 'lucide-react'
+import { FileText } from 'lucide-react'
 
 describe('EmptyState', () => {
   it('renders title', () => {

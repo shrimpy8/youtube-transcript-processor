@@ -142,7 +142,7 @@ describe('accessibility-utils', () => {
     it('creates skip link element', () => {
       const link = createSkipLink('#main', 'Skip to content')
       expect(link.tagName).toBe('A')
-      expect(link.href).toContain('#main')
+      expect((link as HTMLAnchorElement).href).toContain('#main')
       expect(link.textContent).toBe('Skip to content')
     })
   })

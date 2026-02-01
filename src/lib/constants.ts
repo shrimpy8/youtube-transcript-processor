@@ -115,5 +115,39 @@ export const TEXT_PROCESSING = {
  */
 export const STORAGE_KEYS = {
   PROCESSING_OPTIONS: 'transcript-processing-options',
+  FAVORITE_CHANNELS: 'favorite-channels',
+  FAVORITE_CHANNELS_AUTO_FETCH: 'favorite-channels-auto-fetch',
+  FAVORITE_CHANNELS_EPISODES_CACHE: 'favorite-channels-episodes-cache',
 } as const
+
+/**
+ * Favorite channels feature constants
+ */
+/**
+ * Pipeline step labels for the summarize pipeline modal
+ */
+export const PIPELINE_STEP_LABELS = [
+  'Grabbing the conversation...',
+  'Making sense of the words...',
+  'Setting the stage...',
+  'Distilling the key insights...',
+  'Putting the finishing touches...',
+] as const
+
+/**
+ * YouTube thumbnail URL template
+ */
+export function getYouTubeThumbnailUrl(videoId: string): string {
+  return `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`
+}
+
+/**
+ * Channel video limits
+ */
+export const CHANNEL_VIDEO_FETCH_LIMIT = 50
+export const CHANNEL_VIDEO_DISPLAY_LIMIT = 10
+
+export const MAX_FAVORITE_CHANNELS = 5
+export const MAX_EPISODES_PER_CHANNEL = 2
+export const EPISODE_CACHE_TTL_MS = 300_000 // 5 minutes
 

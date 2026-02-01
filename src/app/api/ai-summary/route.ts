@@ -5,17 +5,16 @@ import {
   generateAllSummaries,
   loadPromptTemplate
 } from '@/lib/llm-service'
-import { handleApiError, createSuccessResponse } from '@/lib/api-helpers'
+import { handleApiError, createSuccessResponse, generateRequestId } from '@/lib/api-helpers'
 import { createLogger } from '@/lib/logger'
-import { createRateLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limiter'
+import { createRateLimiter, getClientIp, rateLimitResponse, RATE_LIMIT_PRESETS } from '@/lib/rate-limiter'
 
 /**
  * Logger instance for AI summary API route
  */
 const logger = createLogger('ai-summary-api')
 
-/** Rate limiter: 10 requests per minute per IP */
-const limiter = createRateLimiter({ maxRequests: 10, windowMs: 60_000 })
+const limiter = createRateLimiter(RATE_LIMIT_PRESETS.standard)
 
 /**
  * POST /api/ai-summary
@@ -26,15 +25,16 @@ const limiter = createRateLimiter({ maxRequests: 10, windowMs: 60_000 })
  * @remarks Supports single provider or 'all' for parallel generation across all providers
  */
 export async function POST(request: NextRequest) {
+  const requestId = generateRequestId()
   try {
     // Rate limit by client IP
     const clientIp = getClientIp(request)
     if (!limiter.check(clientIp)) {
-      logger.warn('Rate limit exceeded', { clientIp })
+      logger.warn('Rate limit exceeded', { requestId, clientIp })
       return rateLimitResponse()
     }
 
-    logger.debug('Received AI summary request')
+    logger.debug('Received AI summary request', { requestId })
     
     const body: AISummaryRequest = await request.json()
     const { transcript, provider, summaryStyle, videoUrl } = body
@@ -45,6 +45,7 @@ export async function POST(request: NextRequest) {
       : 'bullets'
 
     logger.debug('Parsed request body', {
+      requestId,
       provider,
       summaryStyle: style,
       hasVideoUrl: !!videoUrl,
@@ -94,14 +95,29 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Validate videoUrl if provided — only YouTube URLs allowed
+    let sanitizedVideoUrl: string | undefined = undefined
+    if (videoUrl && typeof videoUrl === 'string') {
+      try {
+        const parsed = new URL(videoUrl)
+        const allowed = ['youtube.com', 'www.youtube.com', 'youtu.be']
+        if (allowed.some(d => parsed.hostname === d)) {
+          sanitizedVideoUrl = videoUrl
+        }
+      } catch {
+        // Invalid URL — ignore silently, don't inject into prompt
+      }
+    }
+
     logger.info('Starting summary generation', {
+      requestId,
       provider,
       summaryStyle: style,
       transcriptLength: transcript.length
     })
 
     // Load style-specific prompt template
-    const promptTemplate = await loadPromptTemplate(style, videoUrl)
+    const promptTemplate = await loadPromptTemplate(style, sanitizedVideoUrl)
     logger.debug('Prompt template loaded', {
       templateLength: promptTemplate.length,
       style,
@@ -125,6 +141,7 @@ export async function POST(request: NextRequest) {
     const failedCount = summaries.filter(s => !s.success).length
 
     logger.info('Summary generation completed', {
+      requestId,
       provider,
       totalSummaries: summaries.length,
       successfulCount,
@@ -134,10 +151,10 @@ export async function POST(request: NextRequest) {
     // Return successful summaries (even if some failed when "all" is selected)
     return createSuccessResponse({
       summaries,
-    })
+    }, 200, requestId)
   } catch (error: unknown) {
-    logger.error('AI summary generation failed', error)
-    return handleApiError(error, 'Failed to generate AI summary')
+    logger.error('AI summary generation failed', error, { requestId })
+    return handleApiError(error, 'Failed to generate AI summary', requestId)
   }
 }
 

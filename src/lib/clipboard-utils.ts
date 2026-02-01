@@ -15,7 +15,7 @@ export async function copyToClipboard(text: string): Promise<void> {
 
   try {
     await navigator.clipboard.writeText(text)
-  } catch (error) {
+  } catch {
     // Fallback if clipboard API fails
     return fallbackCopyToClipboard(text)
   }

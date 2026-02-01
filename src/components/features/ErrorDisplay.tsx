@@ -1,6 +1,6 @@
 'use client'
 
-import { AlertTriangle, Info, XCircle, WifiOff, Clock } from 'lucide-react'
+import { Info, XCircle, WifiOff, Clock } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { ErrorType } from '@/lib/errors'

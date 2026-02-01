@@ -7,7 +7,9 @@ import {
   getProviderApiKey,
   getProviderModelName,
   ALL_PROVIDERS,
-  type LLMProviderKey
+  LLM_DEFAULTS,
+  type LLMProviderKey,
+  type ProviderConfig,
 } from './llm-config'
 import { buildFullPrompt, buildAnthropicPromptParts, handleApiResponseError } from './llm-api-helpers'
 
@@ -93,8 +95,21 @@ export async function loadPromptTemplate(
     const promptPath = path.join(process.cwd(), PROMPTS_DIR, filename)
     logger.debug('Loading prompt template', { promptPath, style })
 
+    // Ensure prompt path doesn't escape the prompts directory (path traversal defense)
+    const resolvedPath = path.resolve(promptPath)
+    const expectedDir = path.resolve(process.cwd(), PROMPTS_DIR)
+    if (!resolvedPath.startsWith(expectedDir)) {
+      throw new Error('Prompt template path traversal detected')
+    }
+
     const promptContent = await fs.readFile(promptPath, 'utf-8')
     let trimmedContent = promptContent.trim()
+
+    // Sanity check: prompt templates should be reasonable size (< 50KB)
+    if (trimmedContent.length > 50000) {
+      logger.warn('Prompt template unusually large, possible tampering', { length: trimmedContent.length })
+      throw new Error('Prompt template exceeds maximum expected size')
+    }
 
     // For bullets style, inject the video URL so the LLM can build timestamp links
     if (style === 'bullets' && videoUrl) {
@@ -120,8 +135,9 @@ export async function loadPromptTemplate(
       const fallbackPath = path.join(process.cwd(), PROMPTS_DIR, FALLBACK_PROMPT_FILE)
       const fallbackContent = await fs.readFile(fallbackPath, 'utf-8')
       return fallbackContent.trim()
-    } catch {
+    } catch (fallbackError) {
       // Hardcoded last-resort fallback if even the file is missing
+      logger.error('Both primary and fallback prompt files are missing — using hardcoded last-resort prompt', fallbackError)
       return 'You are an expert analyst. Summarize the following podcast transcript with actionable insights. Only use information explicitly stated in the transcript.'
     }
   }
@@ -139,8 +155,8 @@ export async function loadPromptTemplate(
  */
 async function retryWithBackoff<T>(
   fn: () => Promise<T>,
-  maxRetries: number = 3,
-  initialDelay: number = 1000
+  maxRetries: number = LLM_DEFAULTS.maxRetries,
+  initialDelay: number = LLM_DEFAULTS.initialRetryDelayMs
 ): Promise<T> {
   let lastError: Error | unknown
   
@@ -174,284 +190,118 @@ async function retryWithBackoff<T>(
   throw lastError
 }
 
+// ---------------------------------------------------------------------------
+// Provider Adapter Pattern
+// Each adapter encapsulates the provider-specific differences:
+// URL construction, headers, request body shape, and response content path.
+// ---------------------------------------------------------------------------
+
 /**
- * Generates summary using Anthropic Claude API
- * Makes a direct API call to Anthropic's Messages API endpoint
- * 
- * @param transcript - The transcript text to summarize
- * @param promptTemplate - The prompt template to use for the request
- * @returns Promise resolving to the generated summary text
- * @throws Error if API key is not configured, API request fails, or no content is returned
+ * Adapter interface for LLM provider-specific API details
  */
-export async function generateAnthropicSummary(
-  transcript: string,
-  promptTemplate: string
-): Promise<string> {
-  const config = getProviderConfig('anthropic')
-  const apiKey = getProviderApiKey('anthropic')
-  const model = process.env[config.modelEnv] || config.defaultModel
-
-  logger.debug('Generating Anthropic summary', {
-    model,
-    transcriptLength: transcript.length,
-    promptLength: promptTemplate.length
-  })
-
-  // Validate API key exists and is not empty/whitespace
-  if (!apiKey || !apiKey.trim()) {
-    const error = new Error(`${config.apiKeyEnv} is not configured. Please set it in your .env.local file.`)
-    logger.error('Anthropic API key not configured', error, { 
-      config,
-      hasApiKey: !!apiKey,
-      apiKeyLength: apiKey?.length || 0
-    })
-    throw error
-  }
-
-  // Validate API key format (Anthropic keys typically start with 'sk-ant-')
-  if (!apiKey.startsWith('sk-ant-')) {
-    logger.warn('Anthropic API key format may be invalid', {
-      apiKeyPrefix: apiKey.substring(0, 6) + '***',
-      expectedPrefix: 'sk-ant-'
-    })
-  }
-
-  const { systemPrompt, userMessage } = await buildAnthropicPromptParts(promptTemplate, transcript)
-
-  return retryWithBackoff(async () => {
-    logger.debug('Making Anthropic API request', {
-      endpoint: 'https://api.anthropic.com/v1/messages',
-      model,
-      systemPromptLength: systemPrompt.length,
-      userMessageLength: userMessage.length
-    })
-
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify({
-        model,
-        max_tokens: config.maxOutputTokens,
-        system: systemPrompt,
-        messages: [
-          {
-            role: 'user',
-            content: userMessage,
-          },
-        ],
-        temperature: 0.7,
-      }),
-    })
-
-    if (!response.ok) {
-      logger.error('Anthropic API request failed', undefined, {
-        status: response.status,
-        statusText: response.statusText
-      })
-      await handleApiResponseError(response, 'Anthropic')
-    }
-
-    const data = await response.json()
-    const content = data.content?.[0]?.text
-
-    if (!content) {
-      logger.error('No content in Anthropic API response', undefined, {
-        responseKeys: Object.keys(data),
-        hasContent: !!data.content,
-        contentLength: data.content?.length
-      })
-      throw new Error('No content returned from Anthropic API')
-    }
-
-    validateLLMOutput(content, 'Anthropic')
-
-    logger.info('Anthropic summary generated successfully', {
-      contentLength: content.length,
-      model
-    })
-
-    return content
-  })
+interface ProviderAdapter {
+  /** Display name for logging and error messages */
+  name: string
+  /** Build the API endpoint URL */
+  buildUrl(model: string, apiKey: string): string
+  /** Build request headers */
+  buildHeaders(apiKey: string, config: ProviderConfig): Record<string, string>
+  /** Build request body from prompt and config */
+  buildBody(params: {
+    model: string
+    transcript: string
+    promptTemplate: string
+    config: ProviderConfig
+  }): Promise<unknown>
+  /** Extract content string from the parsed API response */
+  extractContent(data: Record<string, unknown>): string | undefined
+  /** Optional: validate API key format before making request */
+  validateApiKey?(apiKey: string): void
+  /** Optional: provider-specific response validation beyond shared checks */
+  validateResponse?(content: string, promptTemplate: string): void
 }
 
-/**
- * Generates summary using Google Gemini API
- * Makes a direct API call to Google's Generative AI API endpoint
- * 
- * @param transcript - The transcript text to summarize
- * @param promptTemplate - The prompt template to use for the request
- * @returns Promise resolving to the generated summary text
- * @throws Error if API key is not configured, API request fails, or no content is returned
- */
-export async function generateGeminiSummary(
-  transcript: string,
-  promptTemplate: string
-): Promise<string> {
-  const config = getProviderConfig('google-gemini')
-  const apiKey = getProviderApiKey('google-gemini')
-  const model = process.env[config.modelEnv] || config.defaultModel
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
-  logger.debug('Generating Gemini summary', {
-    model,
-    transcriptLength: transcript.length,
-    promptLength: promptTemplate.length
-  })
-
-  if (!apiKey) {
-    const error = new Error(`${config.apiKeyEnv} is not configured`)
-    logger.error('Gemini API key not configured', error, { config })
-    throw error
-  }
-
-  const fullPrompt = buildFullPrompt(promptTemplate, transcript)
-
-  return retryWithBackoff(async () => {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`
-    
-    logger.debug('Making Gemini API request', {
-      endpoint: url.split('?')[0], // Don't log API key
+const anthropicAdapter: ProviderAdapter = {
+  name: 'Anthropic',
+  buildUrl() {
+    return 'https://api.anthropic.com/v1/messages'
+  },
+  buildHeaders(apiKey, config) {
+    return {
+      'Content-Type': 'application/json',
+      'x-api-key': apiKey,
+      'anthropic-version': config.apiVersion || '2023-06-01',
+    }
+  },
+  async buildBody({ model, transcript, promptTemplate, config }) {
+    const { systemPrompt, userMessage } = await buildAnthropicPromptParts(promptTemplate, transcript)
+    return {
       model,
-      promptLength: fullPrompt.length
-    })
-    
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        contents: [
-          {
-            parts: [
-              {
-                text: fullPrompt,
-              },
-            ],
-          },
-        ],
-        generationConfig: {
-          maxOutputTokens: config.maxOutputTokens,
-          temperature: 0.7,
-        },
-      }),
-    })
-
-    if (!response.ok) {
-      logger.error('Gemini API request failed', undefined, {
-        status: response.status,
-        statusText: response.statusText
-      })
-      await handleApiResponseError(response, 'Gemini')
+      max_tokens: config.maxOutputTokens,
+      system: systemPrompt,
+      messages: [{ role: 'user', content: userMessage }],
+      temperature: LLM_DEFAULTS.temperature,
     }
-
-    const data = await response.json()
-    const content = data.candidates?.[0]?.content?.parts?.[0]?.text
-
-    if (!content) {
-      logger.error('No content in Gemini API response', undefined, {
-        responseKeys: Object.keys(data),
-        hasCandidates: !!data.candidates,
-        candidatesLength: data.candidates?.length
-      })
-      throw new Error('No content returned from Gemini API')
+  },
+  extractContent(data: any) {
+    return data.content?.[0]?.text
+  },
+  validateApiKey(apiKey) {
+    if (!apiKey.startsWith('sk-ant-')) {
+      logger.warn('Anthropic API key format may be invalid — check ANTHROPIC_API_KEY in .env.local')
     }
-
-    validateLLMOutput(content, 'Gemini')
-
-    logger.info('Gemini summary generated successfully', {
-      contentLength: content.length,
-      model
-    })
-
-    return content
-  })
+  },
 }
 
-/**
- * Generates summary using Perplexity API
- * Makes a direct API call to Perplexity's Chat Completions API endpoint
- * 
- * @param transcript - The transcript text to summarize
- * @param promptTemplate - The prompt template to use for the request
- * @returns Promise resolving to the generated summary text
- * @throws Error if API key is not configured, API request fails, or no content is returned
- */
-export async function generatePerplexitySummary(
-  transcript: string,
-  promptTemplate: string
-): Promise<string> {
-  const config = getProviderConfig('perplexity')
-  const apiKey = getProviderApiKey('perplexity')
-  const model = process.env[config.modelEnv] || config.defaultModel
-
-  logger.debug('Generating Perplexity summary', {
-    model,
-    transcriptLength: transcript.length,
-    promptLength: promptTemplate.length
-  })
-
-  if (!apiKey) {
-    const error = new Error(`${config.apiKeyEnv} is not configured`)
-    logger.error('Perplexity API key not configured', error, { config })
-    throw error
-  }
-
-  const fullPrompt = buildFullPrompt(promptTemplate, transcript)
-
-  return retryWithBackoff(async () => {
-    logger.debug('Making Perplexity API request', {
-      endpoint: 'https://api.perplexity.ai/chat/completions',
-      model,
-      promptLength: fullPrompt.length
-    })
-
-    const response = await fetch('https://api.perplexity.ai/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
+const geminiAdapter: ProviderAdapter = {
+  name: 'Gemini',
+  buildUrl(model, apiKey) {
+    return `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`
+  },
+  buildHeaders() {
+    return { 'Content-Type': 'application/json' }
+  },
+  async buildBody({ transcript, promptTemplate, config }) {
+    const fullPrompt = buildFullPrompt(promptTemplate, transcript)
+    return {
+      contents: [{ parts: [{ text: fullPrompt }] }],
+      generationConfig: {
+        maxOutputTokens: config.maxOutputTokens,
+        temperature: LLM_DEFAULTS.temperature,
       },
-      body: JSON.stringify({
-        model,
-        messages: [
-          {
-            role: 'user',
-            content: fullPrompt,
-          },
-        ],
-        max_tokens: config.maxOutputTokens,
-        temperature: 0.7,
-      }),
-    })
-
-    if (!response.ok) {
-      logger.error('Perplexity API request failed', undefined, {
-        status: response.status,
-        statusText: response.statusText
-      })
-      await handleApiResponseError(response, 'Perplexity')
     }
+  },
+  extractContent(data: any) {
+    return data.candidates?.[0]?.content?.parts?.[0]?.text
+  },
+}
 
-    const data = await response.json()
-    const content = data.choices?.[0]?.message?.content
-    
-    if (!content) {
-      logger.error('No content in Perplexity API response', undefined, {
-        responseKeys: Object.keys(data),
-        hasChoices: !!data.choices,
-        choicesLength: data.choices?.length
-      })
-      throw new Error('No content returned from Perplexity API')
+const perplexityAdapter: ProviderAdapter = {
+  name: 'Perplexity',
+  buildUrl() {
+    return 'https://api.perplexity.ai/chat/completions'
+  },
+  buildHeaders(apiKey) {
+    return {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`,
     }
-
-    // Shared refusal + length validation
-    validateLLMOutput(content, 'Perplexity')
-
-    // Detect incomplete Technical responses (missing required sections)
+  },
+  async buildBody({ model, transcript, promptTemplate, config }) {
+    const fullPrompt = buildFullPrompt(promptTemplate, transcript)
+    return {
+      model,
+      messages: [{ role: 'user', content: fullPrompt }],
+      max_tokens: config.maxOutputTokens,
+      temperature: LLM_DEFAULTS.temperature,
+    }
+  },
+  extractContent(data: any) {
+    return data.choices?.[0]?.message?.content
+  },
+  validateResponse(content, promptTemplate) {
     const isTechnicalPrompt = promptTemplate.includes('### 1. Tools & Technologies')
     if (isTechnicalPrompt) {
       const hasSection1 = /###?\s*1\.\s*Tools/i.test(content)
@@ -460,15 +310,105 @@ export async function generatePerplexitySummary(
         logger.warn('Perplexity returned incomplete Technical summary, will retry', {
           hasSection1,
           hasSection2,
-          contentPreview: content.substring(0, 200)
+          contentPreview: content.substring(0, 200),
         })
         throw new Error('Perplexity returned an incomplete summary (missing sections). Retrying...')
       }
     }
+  },
+}
 
-    logger.info('Perplexity summary generated successfully', {
+/* eslint-enable @typescript-eslint/no-explicit-any */
+
+/**
+ * Provider adapter registry — maps provider key to its adapter
+ */
+const PROVIDER_ADAPTERS: Record<LLMProviderKey, ProviderAdapter> = {
+  'anthropic': anthropicAdapter,
+  'google-gemini': geminiAdapter,
+  'perplexity': perplexityAdapter,
+}
+
+/**
+ * Generic LLM summary generation using provider adapters.
+ * Handles the shared workflow: validate key → build request → retry fetch →
+ * extract content → validate output.
+ *
+ * @param provider - LLM provider key
+ * @param transcript - Transcript text to summarize
+ * @param promptTemplate - Prompt template for the request
+ * @returns Promise resolving to the generated summary text
+ */
+async function generateLLMSummary(
+  provider: LLMProviderKey,
+  transcript: string,
+  promptTemplate: string
+): Promise<string> {
+  const adapter = PROVIDER_ADAPTERS[provider]
+  const config = getProviderConfig(provider)
+  const apiKey = getProviderApiKey(provider)
+  const model = process.env[config.modelEnv] || config.defaultModel
+
+  logger.debug(`Generating ${adapter.name} summary`, {
+    model,
+    transcriptLength: transcript.length,
+    promptLength: promptTemplate.length,
+  })
+
+  // Validate API key exists
+  if (!apiKey || !apiKey.trim()) {
+    const error = new Error(`${config.apiKeyEnv} is not configured. Please set it in your .env.local file.`)
+    logger.error(`${adapter.name} API key not configured`, error, { config })
+    throw error
+  }
+
+  // Provider-specific key format check
+  adapter.validateApiKey?.(apiKey)
+
+  return retryWithBackoff(async () => {
+    const url = adapter.buildUrl(model, apiKey)
+    const headers = adapter.buildHeaders(apiKey, config)
+    const body = await adapter.buildBody({ model, transcript, promptTemplate, config })
+
+    logger.debug(`Making ${adapter.name} API request`, {
+      endpoint: url.split('?')[0], // Don't log API key in query params
+      model,
+    })
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(LLM_DEFAULTS.fetchTimeoutMs),
+    })
+
+    if (!response.ok) {
+      logger.error(`${adapter.name} API request failed`, undefined, {
+        status: response.status,
+        statusText: response.statusText,
+      })
+      await handleApiResponseError(response, adapter.name)
+    }
+
+    const data = await response.json()
+    const content = adapter.extractContent(data)
+
+    if (!content) {
+      logger.error(`No content in ${adapter.name} API response`, undefined, {
+        responseKeys: Object.keys(data),
+      })
+      throw new Error(`No content returned from ${adapter.name} API`)
+    }
+
+    // Shared validation (refusal patterns, minimum length)
+    validateLLMOutput(content, adapter.name)
+
+    // Provider-specific validation (e.g. Perplexity technical section check)
+    adapter.validateResponse?.(content, promptTemplate)
+
+    logger.info(`${adapter.name} summary generated successfully`, {
       contentLength: content.length,
-      model
+      model,
     })
 
     return content
@@ -477,8 +417,7 @@ export async function generatePerplexitySummary(
 
 /**
  * Generates summary for a specific provider
- * Routes the request to the appropriate provider-specific function
- * 
+ *
  * @param provider - LLM provider to use ('anthropic', 'google-gemini', or 'perplexity')
  * @param transcript - Transcript text to summarize
  * @param promptTemplate - Prompt template to use (should be loaded via loadPromptTemplate)
@@ -489,38 +428,21 @@ export async function generateSummaryForProvider(
   transcript: string,
   promptTemplate: string
 ): Promise<AISummaryResponse> {
-  const config = getProviderConfig(provider)
   const modelName = getProviderModelName(provider)
-  
+
   logger.info('Generating summary for provider', {
     provider,
     modelName,
-    transcriptLength: transcript.length
+    transcriptLength: transcript.length,
   })
 
-  let summary: string
-
   try {
-    switch (provider) {
-      case 'anthropic':
-        summary = await generateAnthropicSummary(transcript, promptTemplate)
-        break
-      case 'google-gemini':
-        summary = await generateGeminiSummary(transcript, promptTemplate)
-        break
-      case 'perplexity':
-        summary = await generatePerplexitySummary(transcript, promptTemplate)
-        break
-      default:
-        const unknownError = new Error(`Unknown provider: ${provider}`)
-        logger.error('Unknown provider specified', unknownError, { provider })
-        throw unknownError
-    }
+    const summary = await generateLLMSummary(provider, transcript, promptTemplate)
 
     logger.info('Summary generated successfully', {
       provider,
       modelName,
-      summaryLength: summary.length
+      summaryLength: summary.length,
     })
 
     return {
@@ -534,9 +456,9 @@ export async function generateSummaryForProvider(
     logger.error('Error generating summary for provider', error, {
       provider,
       modelName,
-      errorMessage
+      errorMessage,
     })
-    
+
     return {
       provider,
       modelName,

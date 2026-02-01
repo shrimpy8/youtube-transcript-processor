@@ -78,7 +78,8 @@ export function useTranscriptSearch(
   }, [])
 
   const highlightText = useCallback(
-    (text: string, segmentIndex: number): ReactNode => {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    (text: string, _segmentIndex: number): ReactNode => {
       if (!query.trim()) return text
 
       const searchQuery = query

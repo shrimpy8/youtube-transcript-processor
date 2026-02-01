@@ -1,15 +1,9 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { TranscriptSearch } from '../TranscriptSearch'
 import { useTranscriptSearch } from '@/hooks/useTranscriptSearch'
-import { TranscriptSegment } from '@/types'
-
 // Mock the hook
 vi.mock('@/hooks/useTranscriptSearch')
-
-const mockSegments: TranscriptSegment[] = [
-  { text: 'Hello world', start: 0, duration: 2 },
-]
 
 describe('TranscriptSearch', () => {
   const mockSearch = {
@@ -27,7 +21,7 @@ describe('TranscriptSearch', () => {
   }
 
   beforeEach(() => {
-    vi.mocked(useTranscriptSearch).mockReturnValue(mockSearch as any)
+    vi.mocked(useTranscriptSearch).mockReturnValue(mockSearch as unknown as ReturnType<typeof useTranscriptSearch>)
   })
 
   afterEach(() => {

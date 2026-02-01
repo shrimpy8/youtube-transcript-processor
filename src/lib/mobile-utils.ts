@@ -154,7 +154,7 @@ export function optimizeImageForDevice(
     format?: 'webp' | 'avif' | 'jpg' | 'png'
   } = {}
 ): string {
-  const { width, quality = 80, format } = options
+  const { width, format } = options
 
   // If no optimization needed, return original
   if (!width && !format) {

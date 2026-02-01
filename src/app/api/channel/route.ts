@@ -3,17 +3,21 @@ import { getChannelInfoFromVideo, getChannelVideos } from '@/lib/ytdlp-service'
 import { validateAndParseUrl } from '@/lib/youtube-validator'
 import { ChannelDetails, VideoMetadata } from '@/types'
 import { mapYtDlpError } from '@/lib/error-mapper'
-import { handleApiError, createSuccessResponse } from '@/lib/api-helpers'
-import { createRateLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limiter'
+import { handleApiError, createSuccessResponse, generateRequestId } from '@/lib/api-helpers'
+import { createRateLimiter, getClientIp, rateLimitResponse, RATE_LIMIT_PRESETS } from '@/lib/rate-limiter'
+import { CHANNEL_VIDEO_FETCH_LIMIT, CHANNEL_VIDEO_DISPLAY_LIMIT } from '@/lib/constants'
+import { createLogger } from '@/lib/logger'
 
-/** Rate limiter: 10 requests per minute per IP */
-const limiter = createRateLimiter({ maxRequests: 10, windowMs: 60_000 })
+const logger = createLogger('api/channel')
+
+const limiter = createRateLimiter(RATE_LIMIT_PRESETS.standard)
 
 /**
  * POST /api/channel
  * Gets channel information and videos from a video URL
  */
 export async function POST(request: NextRequest) {
+  const requestId = generateRequestId()
   try {
     const clientIp = getClientIp(request)
     if (!limiter.check(clientIp)) {
@@ -56,7 +60,7 @@ export async function POST(request: NextRequest) {
       let topVideos: VideoMetadata[] = []
       try {
         // Fetch channel videos with view counts (get more than 10 to sort by popularity)
-        const allVideos = await getChannelVideos(channelInfo.channelUrl, 50, true)
+        const allVideos = await getChannelVideos(channelInfo.channelUrl, CHANNEL_VIDEO_FETCH_LIMIT, true)
         
         // Sort videos by view count (highest first), fallback to date if view count unavailable
         const sortedVideos = allVideos.sort((a, b) => {
@@ -79,7 +83,7 @@ export async function POST(request: NextRequest) {
         })
 
         // Get top 10 videos and add ranking numbers
-        topVideos = sortedVideos.slice(0, 10).map((video, index) => ({
+        topVideos = sortedVideos.slice(0, CHANNEL_VIDEO_DISPLAY_LIMIT).map((video, index) => ({
           ...video,
           rank: index + 1
         }))
@@ -87,7 +91,7 @@ export async function POST(request: NextRequest) {
       } catch (videoError: unknown) {
         // Log the error but don't fail the entire request
         const videoErrorMessage = videoError instanceof Error ? videoError.message : String(videoError)
-        console.warn('Failed to fetch channel videos:', videoErrorMessage)
+        logger.warn('Failed to fetch channel videos', { requestId, error: videoErrorMessage })
         
         // If it's a 404, the channel might not be accessible or might not exist
         // Still return channel info but with empty videos list
@@ -96,7 +100,7 @@ export async function POST(request: NextRequest) {
           // Return channel info with empty videos
         } else {
           // For other errors, log but continue
-          console.error('Channel videos fetch error:', videoError)
+          logger.error('Channel videos fetch error', videoError, { requestId })
         }
       }
 
@@ -105,13 +109,13 @@ export async function POST(request: NextRequest) {
           channel: channelDetails,
           videos: topVideos,
         },
-      })
+      }, 200, requestId)
     } catch (error: unknown) {
       // Map yt-dlp errors using error mapper
       throw mapYtDlpError(error, { videoId: validation.videoId || 'unknown' })
     }
   } catch (error: unknown) {
-    return handleApiError(error, 'Failed to get channel information')
+    return handleApiError(error, 'Failed to get channel information', requestId)
   }
 }
 

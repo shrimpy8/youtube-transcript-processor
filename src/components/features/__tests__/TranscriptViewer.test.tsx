@@ -102,7 +102,7 @@ describe('TranscriptViewer', () => {
       expect(clipboardUtils.copyToClipboard).toHaveBeenCalled()
     })
     
-    const textWithoutTimestamps = (clipboardUtils.copyToClipboard as any).mock.calls[0][0]
+    const textWithoutTimestamps = (clipboardUtils.copyToClipboard as unknown as { mock: { calls: string[][] } }).mock.calls[0][0]
     vi.clearAllMocks()
 
     // Enable timestamps
@@ -119,7 +119,7 @@ describe('TranscriptViewer', () => {
 
     await waitFor(() => {
       expect(clipboardUtils.copyToClipboard).toHaveBeenCalled()
-      const textWithTimestamps = (clipboardUtils.copyToClipboard as any).mock.calls[0][0]
+      const textWithTimestamps = (clipboardUtils.copyToClipboard as unknown as { mock: { calls: string[][] } }).mock.calls[0][0]
       // Text with timestamps should be longer and contain timestamp format
       expect(textWithTimestamps.length).toBeGreaterThan(textWithoutTimestamps.length)
       expect(textWithTimestamps).toMatch(/\d+:\d+/)

@@ -106,7 +106,7 @@ export async function measurePerformance<T>(
     performance.mark(endMark)
     try {
       performance.measure(measureName, startMark, endMark)
-    } catch (e) {
+    } catch {
       // Measure might already exist, ignore
     }
   }

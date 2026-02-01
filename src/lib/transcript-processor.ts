@@ -135,112 +135,143 @@ export function detectSpeaker(text: string): string | null {
 }
 
 /**
+ * Joins text segments with proper sentence spacing.
+ * Adds space between segments, handles sentence breaks and concatenated words.
+ */
+function joinSegmentsWithSpacing(segments: string[]): string {
+  if (segments.length === 0) return ''
+  if (segments.length === 1) return segments[0].trim()
+
+  let result = segments[0].trim()
+
+  for (let i = 1; i < segments.length; i++) {
+    const currentSegment = segments[i].trim()
+    if (!currentSegment) continue
+
+    result = result.trim()
+
+    const resultEndsWithLetter = /[a-zA-Z]$/.test(result)
+    const currentStartsWithCapital = /^[A-Z]/.test(currentSegment)
+
+    // Fix concatenated words like "increaseSo" -> "increase So"
+    if (resultEndsWithLetter && currentStartsWithCapital && !result.endsWith(' ')) {
+      const lastChar = result[result.length - 1]
+      if (lastChar === lastChar.toLowerCase()) {
+        result += ' ' + currentSegment
+        continue
+      }
+    }
+
+    const endsWithPunctuation = /[.!?]$/.test(result)
+
+    if (endsWithPunctuation) {
+      result += '  ' + currentSegment  // Double space after punctuation
+    } else {
+      result += ' ' + currentSegment
+    }
+  }
+
+  return result
+}
+
+/**
+ * Enhanced speaker detection for early segments (first 20).
+ * Catches host introductions that the general detectSpeaker misses.
+ */
+function detectEarlySpeaker(text: string): string | null {
+  const lowerText = text.toLowerCase()
+  const trimmedText = text.trim()
+
+  if (lowerText.includes('welcome to') ||
+      lowerText.includes('hey everyone') ||
+      lowerText.includes('hi everyone') ||
+      lowerText.includes('hello everyone') ||
+      /^i'm\s+\w+/i.test(trimmedText) ||
+      /^this is\s+\w+/i.test(trimmedText) ||
+      (lowerText.includes('podcast') && (lowerText.includes('on') || lowerText.includes('about') || lowerText.includes('how'))) ||
+      (lowerText.includes('today i have') || lowerText.includes('today we have')) ||
+      (lowerText.includes('product leader') || lowerText.includes('i\'m claire') || lowerText.includes('mission to help'))) {
+    return 'Host'
+  }
+  return null
+}
+
+/**
+ * Attributes early undetected segments to Host if they look like a host introduction.
+ * Returns formatted text or null if no attribution is appropriate.
+ */
+function attributeEarlySegments(earlySegments: string[]): string | null {
+  if (earlySegments.length === 0) return null
+  const earlyText = joinSegmentsWithSpacing(earlySegments)
+  if (!earlyText) return null
+
+  const lowerEarlyText = earlyText.toLowerCase()
+  if (lowerEarlyText.includes('welcome') ||
+      lowerEarlyText.includes('hey everyone') ||
+      lowerEarlyText.includes('podcast') ||
+      /i'm\s+\w+/i.test(earlyText)) {
+    return `\n\n**Host**: ${earlyText}`
+  }
+  return earlyText
+}
+
+/**
+ * Joins formatted parts with proper spacing between speaker labels and text blocks.
+ */
+function joinFormattedParts(parts: string[]): string {
+  if (parts.length === 0) return ''
+  if (parts.length === 1) return parts[0]
+
+  let result = parts[0]
+
+  for (let i = 1; i < parts.length; i++) {
+    const currentPart = parts[i]
+
+    if (currentPart.startsWith('\n\n**')) {
+      // Speaker label already has newlines
+      result += currentPart
+    } else if (result.endsWith('\n') || result.endsWith('\n\n')) {
+      result += currentPart
+    } else if (/[.!?]$/.test(result.trim())) {
+      result += ' ' + currentPart
+    } else {
+      result += ' ' + currentPart
+    }
+  }
+
+  return result
+}
+
+/**
  * Formats transcript with speaker detection
  * @param segments - Transcript segments
  * @returns Formatted transcript with speaker labels
  */
 export function formatWithSpeakers(segments: TranscriptSegment[]): string {
   if (!segments.length) return ''
-  
+
   const formattedParts: string[] = []
   let currentSpeaker: string | null = null
   const paragraphBuffer: string[] = []
-  
-  /**
-   * Joins text segments with proper sentence spacing
-   * Adds space between segments, but ensures proper sentence breaks
-   */
-  function joinSegmentsWithSpacing(segments: string[]): string {
-    if (segments.length === 0) return ''
-    if (segments.length === 1) return segments[0].trim()
-    
-    let result = segments[0].trim()
-    
-    for (let i = 1; i < segments.length; i++) {
-      let currentSegment = segments[i].trim()
-      
-      if (!currentSegment) continue
-      
-      // Ensure result doesn't end with a space (normalize)
-      result = result.trim()
-      
-      // Check if result ends without a space and currentSegment starts with a capital letter
-      // This handles cases where segments might be concatenated (e.g., "wordWord" -> "word Word")
-      const resultEndsWithLetter = /[a-zA-Z]$/.test(result)
-      const currentStartsWithCapital = /^[A-Z]/.test(currentSegment)
-      
-      // If previous ends with letter and current starts with capital, ensure space
-      // This fixes concatenated words like "increaseSo" -> "increase So"
-      if (resultEndsWithLetter && currentStartsWithCapital && !result.endsWith(' ')) {
-        // Check if it looks like concatenated words (lowercase followed by uppercase)
-        const lastChar = result[result.length - 1]
-        if (lastChar === lastChar.toLowerCase()) {
-          result += ' ' + currentSegment
-          continue
-        }
-      }
-      
-      // Check if previous segment ends with sentence-ending punctuation
-      const endsWithPunctuation = /[.!?]$/.test(result)
-      
-      // Check if current segment starts with common sentence starters
-      const startsWithSentenceStarter = /^(And|But|So|Then|Now|Well|Um|Uh|I|This|That|The|It|We|You|They|He|She|It's|That's|This's|There's|Here's)/i.test(currentSegment)
-      
-      // Always add a space between segments
-      // Use double space after punctuation for clearer sentence breaks
-      if (endsWithPunctuation) {
-        result += '  ' + currentSegment  // Double space after punctuation
-      } else if (currentStartsWithCapital || startsWithSentenceStarter) {
-        // Single space before capital letter or sentence starter
-        result += ' ' + currentSegment
-      } else {
-        // Regular word continuation - single space
-        result += ' ' + currentSegment
-      }
-    }
-    
-    return result
-  }
-  
-  // Track early undetected segments before first speaker is detected
   const earlyUndetectedSegments: string[] = []
   let hasDetectedFirstSpeaker = false
-  
+
   for (let i = 0; i < segments.length; i++) {
     const segment = segments[i]
     const text = segment.text.trim()
     if (!text) continue
-    
-    // Detect speaker based on content
+
+    // Detect speaker — use enhanced detection for early segments
     let newSpeaker = detectSpeaker(text)
-    
-    // Enhanced detection for early segments (first 20 segments)
-    // These often contain host introductions that need better pattern matching
     if (!newSpeaker && i < 20) {
-      const lowerText = text.toLowerCase()
-      const trimmedText = text.trim()
-      
-      // More comprehensive intro pattern detection
-      if (lowerText.includes('welcome to') || 
-          lowerText.includes('hey everyone') ||
-          lowerText.includes('hi everyone') ||
-          lowerText.includes('hello everyone') ||
-          /^i\'m\s+\w+/i.test(trimmedText) ||
-          /^this is\s+\w+/i.test(trimmedText) ||
-          (lowerText.includes('podcast') && (lowerText.includes('on') || lowerText.includes('about') || lowerText.includes('how'))) ||
-          (lowerText.includes('today i have') || lowerText.includes('today we have')) ||
-          (lowerText.includes('product leader') || lowerText.includes('i\'m claire') || lowerText.includes('mission to help'))) {
-        newSpeaker = 'Host'
-      }
+      newSpeaker = detectEarlySpeaker(text)
     }
-    
-    // If we haven't detected a speaker yet, collect early segments
+
+    // Collect early segments until first speaker is detected
     if (!hasDetectedFirstSpeaker) {
       if (newSpeaker) {
-        // First speaker detected - attribute any early segments to Host if this is Host
         hasDetectedFirstSpeaker = true
         if (newSpeaker === 'Host' && earlyUndetectedSegments.length > 0) {
-          // Prepend early segments as host introduction
           const earlyText = joinSegmentsWithSpacing(earlyUndetectedSegments)
           if (earlyText) {
             formattedParts.push(`\n\n**Host**: ${earlyText}`)
@@ -248,15 +279,13 @@ export function formatWithSpeakers(segments: TranscriptSegment[]): string {
           earlyUndetectedSegments.length = 0
         }
       } else {
-        // No speaker detected yet - store for potential attribution
         earlyUndetectedSegments.push(text)
-        continue // Skip normal processing, we'll handle when speaker is detected
+        continue
       }
     }
-    
-    // Add speaker label if changed or starting
+
+    // Handle speaker changes
     if (newSpeaker !== currentSpeaker) {
-      // Flush previous paragraph
       if (paragraphBuffer.length) {
         const joinedText = joinSegmentsWithSpacing(paragraphBuffer)
         if (joinedText) {
@@ -264,7 +293,7 @@ export function formatWithSpeakers(segments: TranscriptSegment[]): string {
         }
         paragraphBuffer.length = 0
       }
-      
+
       if (newSpeaker) {
         formattedParts.push(`\n\n**${newSpeaker}**: ${text}`)
         currentSpeaker = newSpeaker
@@ -275,24 +304,15 @@ export function formatWithSpeakers(segments: TranscriptSegment[]): string {
       paragraphBuffer.push(text)
     }
   }
-  
-  // If we never detected a speaker but have early segments that look like host intro, attribute to Host
-  if (!hasDetectedFirstSpeaker && earlyUndetectedSegments.length > 0) {
-    const earlyText = joinSegmentsWithSpacing(earlyUndetectedSegments)
-    if (earlyText) {
-      // Check if early text looks like host introduction
-      const lowerEarlyText = earlyText.toLowerCase()
-      if (lowerEarlyText.includes('welcome') || 
-          lowerEarlyText.includes('hey everyone') ||
-          lowerEarlyText.includes('podcast') ||
-          /i\'m\s+\w+/i.test(earlyText)) {
-        formattedParts.push(`\n\n**Host**: ${earlyText}`)
-      } else {
-        formattedParts.push(earlyText)
-      }
+
+  // Attribute early segments if no speaker was ever detected
+  if (!hasDetectedFirstSpeaker) {
+    const attributed = attributeEarlySegments(earlyUndetectedSegments)
+    if (attributed) {
+      formattedParts.push(attributed)
     }
   }
-  
+
   // Flush remaining buffer
   if (paragraphBuffer.length) {
     const joinedText = joinSegmentsWithSpacing(paragraphBuffer)
@@ -300,51 +320,8 @@ export function formatWithSpeakers(segments: TranscriptSegment[]): string {
       formattedParts.push(joinedText)
     }
   }
-  
-  // Join all parts with proper spacing
-  // Ensure there's always proper spacing between parts
-  if (formattedParts.length === 0) return ''
-  if (formattedParts.length === 1) return formattedParts[0]
-  
-  let finalResult = formattedParts[0]
-  
-  for (let i = 1; i < formattedParts.length; i++) {
-    const currentPart = formattedParts[i]
-    const prevPartTrimmed = finalResult.trim()
-    
-    // Check if previous part ends with punctuation or newline
-    const prevEndsWithPunctuation = /[.!?]$/.test(prevPartTrimmed)
-    const prevEndsWithNewline = finalResult.endsWith('\n') || finalResult.endsWith('\n\n')
-    
-    // Check if current part starts with speaker label (starts with **)
-    const startsWithSpeakerLabel = currentPart.startsWith('\n\n**')
-    
-    // If current part starts with speaker label, it already has newlines, so just append
-    if (startsWithSpeakerLabel) {
-      finalResult += currentPart
-    } 
-    // If previous part ends with newline, just append (speaker labels handle their own spacing)
-    else if (prevEndsWithNewline) {
-      finalResult += currentPart
-    }
-    // If previous part ends with punctuation, add space before next part
-    else if (prevEndsWithPunctuation) {
-      finalResult += ' ' + currentPart
-    }
-    // Otherwise, check if we need spacing
-    else {
-      const currentTrimmed = currentPart.trim()
-      // If current part starts with capital letter, it's likely a new sentence - add space
-      if (/^[A-Z]/.test(currentTrimmed)) {
-        finalResult += ' ' + currentPart
-      } else {
-        // Regular continuation - ensure space
-        finalResult += ' ' + currentPart
-      }
-    }
-  }
-  
-  return finalResult
+
+  return joinFormattedParts(formattedParts)
 }
 
 /**

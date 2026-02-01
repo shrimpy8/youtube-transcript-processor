@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi, afterEach } from 'vitest'
 import { renderHook, act, waitFor } from '@testing-library/react'
 import { useErrorRecovery } from '../useErrorRecovery'
 
@@ -190,7 +190,7 @@ describe('useErrorRecovery', () => {
   }, 10000)
 
   it('sets isRetrying during retry', async () => {
-    let resolveRetry: (value?: unknown) => void
+    let resolveRetry: () => void
     const retryFn = vi.fn().mockImplementation(
       () =>
         new Promise<void>((resolve) => {
@@ -223,7 +223,7 @@ describe('useErrorRecovery', () => {
 
   it('prevents concurrent retries', async () => {
     // Use a delayed retry function to ensure state updates happen
-    let resolveRetry: (value?: unknown) => void
+    let resolveRetry: () => void
     const retryFn = vi.fn().mockImplementation(
       () =>
         new Promise<void>((resolve) => {

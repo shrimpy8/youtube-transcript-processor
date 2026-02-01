@@ -47,7 +47,7 @@ describe('export-utils', () => {
 
     it('should throw error for unsupported formats', () => {
       expect(() => {
-        exportTranscriptToFormat(mockTranscript, 'json' as any)
+        exportTranscriptToFormat(mockTranscript, 'json' as unknown as Parameters<typeof exportTranscriptToFormat>[1])
       }).toThrow('Format json is not yet supported')
     })
   })
@@ -101,7 +101,7 @@ describe('export-utils', () => {
       const clickSpy = vi.spyOn(link, 'click')
 
       // Mock createElement to return our link
-      vi.spyOn(document, 'createElement').mockReturnValue(link as any)
+      vi.spyOn(document, 'createElement').mockReturnValue(link as unknown as HTMLElement)
 
       triggerDownload(blob, 'test.txt')
 
@@ -115,7 +115,7 @@ describe('export-utils', () => {
   describe('exportAndDownload', () => {
     it('should export and download transcript', async () => {
       const link = document.createElement('a')
-      vi.spyOn(document, 'createElement').mockReturnValue(link as any)
+      vi.spyOn(document, 'createElement').mockReturnValue(link as unknown as HTMLElement)
       vi.spyOn(link, 'click')
 
       await exportAndDownload(mockTranscript, 'txt', {}, 'Test Video')

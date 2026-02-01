@@ -1,15 +1,22 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { fetchTranscriptByUrlWithYtDlp } from '../api-client'
 import {
-  NoTranscriptError,
-  VideoNotFoundError,
-  NetworkError,
-  RateLimitError,
   ErrorType,
 } from '../errors'
 
 // Mock fetch globally
 global.fetch = vi.fn()
+
+/** Helper: create a mock Response with both .json() and .text() */
+function mockFetchResponse(body: unknown, init: { ok: boolean; status?: number }) {
+  const jsonStr = JSON.stringify(body)
+  return {
+    ok: init.ok,
+    status: init.status ?? (init.ok ? 200 : 500),
+    json: async () => body,
+    text: async () => jsonStr,
+  } as Response
+}
 
 describe('api-client', () => {
   beforeEach(() => {
@@ -34,10 +41,7 @@ describe('api-client', () => {
         },
       }
 
-      vi.mocked(fetch).mockResolvedValueOnce({
-        ok: true,
-        json: async () => mockResponse,
-      } as Response)
+      vi.mocked(fetch).mockResolvedValueOnce(mockFetchResponse(mockResponse, { ok: true }))
 
       const result = await fetchTranscriptByUrlWithYtDlp('https://youtube.com/watch?v=abc123')
 
@@ -50,14 +54,10 @@ describe('api-client', () => {
     })
 
     it('handles 404 with NO_TRANSCRIPT type', async () => {
-      vi.mocked(fetch).mockResolvedValueOnce({
-        ok: false,
-        status: 404,
-        json: async () => ({
-          error: 'Transcript not available',
-          type: ErrorType.NO_TRANSCRIPT,
-        }),
-      } as Response)
+      vi.mocked(fetch).mockResolvedValueOnce(mockFetchResponse(
+        { error: 'Transcript not available', type: ErrorType.NO_TRANSCRIPT },
+        { ok: false, status: 404 }
+      ))
 
       const result = await fetchTranscriptByUrlWithYtDlp('https://youtube.com/watch?v=abc123')
       expect(result.success).toBe(false)
@@ -65,14 +65,10 @@ describe('api-client', () => {
     })
 
     it('handles VideoNotFoundError for 404 without NO_TRANSCRIPT type', async () => {
-      vi.mocked(fetch).mockResolvedValueOnce({
-        ok: false,
-        status: 404,
-        json: async () => ({
-          error: 'Video not found',
-          type: ErrorType.VIDEO_NOT_FOUND,
-        }),
-      } as Response)
+      vi.mocked(fetch).mockResolvedValueOnce(mockFetchResponse(
+        { error: 'Video not found', type: ErrorType.VIDEO_NOT_FOUND },
+        { ok: false, status: 404 }
+      ))
 
       const result = await fetchTranscriptByUrlWithYtDlp('https://youtube.com/watch?v=abc123')
       expect(result.success).toBe(false)
@@ -80,14 +76,10 @@ describe('api-client', () => {
     })
 
     it('handles RateLimitError for 429', async () => {
-      vi.mocked(fetch).mockResolvedValueOnce({
-        ok: false,
-        status: 429,
-        json: async () => ({
-          error: 'Rate limit exceeded',
-          type: ErrorType.RATE_LIMIT,
-        }),
-      } as Response)
+      vi.mocked(fetch).mockResolvedValueOnce(mockFetchResponse(
+        { error: 'Rate limit exceeded', type: ErrorType.RATE_LIMIT },
+        { ok: false, status: 429 }
+      ))
 
       const result = await fetchTranscriptByUrlWithYtDlp('https://youtube.com/watch?v=abc123')
       expect(result.success).toBe(false)
@@ -95,14 +87,10 @@ describe('api-client', () => {
     })
 
     it('handles NetworkError for 503', async () => {
-      vi.mocked(fetch).mockResolvedValueOnce({
-        ok: false,
-        status: 503,
-        json: async () => ({
-          error: 'Network error',
-          type: ErrorType.NETWORK_ERROR,
-        }),
-      } as Response)
+      vi.mocked(fetch).mockResolvedValueOnce(mockFetchResponse(
+        { error: 'Network error', type: ErrorType.NETWORK_ERROR },
+        { ok: false, status: 503 }
+      ))
 
       const result = await fetchTranscriptByUrlWithYtDlp('https://youtube.com/watch?v=abc123')
       expect(result.success).toBe(false)
@@ -118,6 +106,3 @@ describe('api-client', () => {
     })
   })
 })
-
-
-

@@ -6,12 +6,12 @@ test.describe('Transcript Fetching', () => {
   })
 
   test('should display URL input', async ({ page }) => {
-    const input = page.getByPlaceholderText(/enter youtube url/i)
+    const input = page.getByPlaceholder(/enter youtube url/i)
     await expect(input).toBeVisible()
   })
 
   test('should validate URL input', async ({ page }) => {
-    const input = page.getByPlaceholderText(/enter youtube url/i)
+    const input = page.getByPlaceholder(/enter youtube url/i)
     
     // Type invalid URL
     await input.fill('not a valid url')
@@ -25,7 +25,7 @@ test.describe('Transcript Fetching', () => {
   })
 
   test('should accept valid YouTube URL', async ({ page }) => {
-    const input = page.getByPlaceholderText(/enter youtube url/i)
+    const input = page.getByPlaceholder(/enter youtube url/i)
     
     // Type valid URL
     await input.fill('https://www.youtube.com/watch?v=dQw4w9WgXcQ')
@@ -38,8 +38,7 @@ test.describe('Transcript Fetching', () => {
     await expect(successIndicator).toBeVisible({ timeout: 2000 })
   })
 
-  // Note: Actual transcript fetching test would require a video with available transcript
-  // This is a placeholder that can be expanded when we have test videos
+  // Skipped: requires live YouTube API — tracked in HH2-314
   test.skip('should fetch transcript for valid video', async ({ page }) => {
     // This test would:
     // 1. Enter a valid YouTube URL

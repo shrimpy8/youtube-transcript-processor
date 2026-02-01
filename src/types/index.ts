@@ -51,7 +51,7 @@ export interface ProcessingJob {
 /**
  * API response wrapper
  */
-export interface ApiResponse<T = any> {
+export interface ApiResponse<T = unknown> {
   success: boolean
   data?: T
   error?: string
@@ -198,4 +198,61 @@ export interface AISummaryState {
   loading: Record<string, boolean>
   errors: Record<string, string | null>
   hasGenerated: boolean
+}
+
+/**
+ * Favorite channel saved by user
+ */
+export interface FavoriteChannel {
+  id: string               // crypto.randomUUID()
+  url: string              // Normalized YouTube channel URL
+  name: string | null      // Resolved channel name, null until fetched
+  addedAt: string          // ISO 8601
+  lastFetchedAt: string | null  // ISO 8601, last successful episode fetch
+}
+
+/**
+ * Episode from a favorite channel
+ */
+export interface FavoriteChannelEpisode {
+  channelId: string        // FK to FavoriteChannel.id
+  videoId: string          // YouTube video ID
+  title: string            // Episode title
+  publishedAt: string      // ISO 8601
+  url: string              // https://youtube.com/watch?v={videoId}
+  thumbnail: string | null
+  duration: number | null  // Seconds
+}
+
+/**
+ * Cache entry for episodes of a single channel
+ */
+export interface EpisodeCacheEntry {
+  episodes: FavoriteChannelEpisode[]
+  fetchedAt: string        // ISO 8601, for cache TTL
+}
+
+/**
+ * Episode cache: channelId → cache entry
+ */
+export type EpisodeCache = Record<string, EpisodeCacheEntry>
+
+/**
+ * Pipeline step IDs for the summarize pipeline
+ */
+export type PipelineStepId = 1 | 2 | 3 | 4 | 5
+
+/**
+ * Status of a pipeline step
+ */
+export type PipelineStepStatus = 'pending' | 'in_progress' | 'completed' | 'failed'
+
+/**
+ * A single step in the summarize pipeline
+ */
+export interface PipelineStep {
+  id: PipelineStepId
+  label: string
+  status: PipelineStepStatus
+  error?: string
 }

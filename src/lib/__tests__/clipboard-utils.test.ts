@@ -4,9 +4,13 @@ import { copyToClipboard, getSelectedText } from '../clipboard-utils'
 describe('clipboard-utils', () => {
   beforeEach(() => {
     // Mock navigator.clipboard
-    global.navigator.clipboard = {
-      writeText: vi.fn().mockResolvedValue(undefined),
-    } as any
+    Object.defineProperty(navigator, 'clipboard', {
+      value: {
+        writeText: vi.fn().mockResolvedValue(undefined),
+      },
+      writable: true,
+      configurable: true,
+    })
 
     // Mock document.execCommand
     document.execCommand = vi.fn().mockReturnValue(true)
@@ -26,7 +30,11 @@ describe('clipboard-utils', () => {
 
     it('should fallback to execCommand if clipboard API fails', async () => {
       // Mock clipboard API to fail
-      global.navigator.clipboard = undefined as any
+      Object.defineProperty(navigator, 'clipboard', {
+        value: undefined,
+        writable: true,
+        configurable: true,
+      })
 
       const text = 'Test text'
       await copyToClipboard(text)
@@ -36,9 +44,13 @@ describe('clipboard-utils', () => {
 
     it('should handle clipboard API errors', async () => {
       // Mock clipboard API to throw error
-      global.navigator.clipboard = {
-        writeText: vi.fn().mockRejectedValue(new Error('Clipboard error')),
-      } as any
+      Object.defineProperty(navigator, 'clipboard', {
+        value: {
+          writeText: vi.fn().mockRejectedValue(new Error('Clipboard error')),
+        },
+        writable: true,
+        configurable: true,
+      })
 
       const text = 'Test text'
       await expect(copyToClipboard(text)).resolves.not.toThrow()
@@ -51,7 +63,7 @@ describe('clipboard-utils', () => {
       const mockSelection = {
         toString: () => 'selected text',
       }
-      window.getSelection = vi.fn().mockReturnValue(mockSelection as any)
+      window.getSelection = vi.fn().mockReturnValue(mockSelection as unknown as Selection)
 
       const result = getSelectedText()
       expect(result).toBe('selected text')
@@ -68,7 +80,7 @@ describe('clipboard-utils', () => {
       const mockSelection = {
         toString: () => '',
       }
-      window.getSelection = vi.fn().mockReturnValue(mockSelection as any)
+      window.getSelection = vi.fn().mockReturnValue(mockSelection as unknown as Selection)
 
       const result = getSelectedText()
       expect(result).toBeNull()

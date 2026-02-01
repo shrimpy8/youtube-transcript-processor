@@ -1,7 +1,6 @@
 import { ProcessedTranscript } from '@/types'
 import { exportTranscript } from './transcript-processor'
 import { sanitizeFilename } from './utils'
-import { formatDate } from './date-utils'
 
 export interface ExportOptions {
   includeMetadata?: boolean
