@@ -9,12 +9,12 @@ import { LoadingState } from "@/components/features/LoadingState"
 import { SummarizePipelineModal } from "@/components/features/SummarizePipelineModal"
 import { useProcessingOptions } from "@/hooks/useProcessingOptions"
 import { useTranscriptProcessing } from "@/hooks/useTranscriptProcessing"
+import { useUrlDetection } from "@/hooks/useUrlDetection"
 import { fetchTranscriptByUrlWithYtDlp, generateAISummary, fetchProviderConfig } from "@/lib/api-client"
 import { extractVideoId, validateAndParseUrl } from "@/lib/youtube-validator"
 import { VideoMetadata } from "@/components/features/VideoPreview"
 import { TranscriptSegment, ProcessedTranscript, FavoriteChannelEpisode, PipelineStep, PipelineStepId, AISummaryResponse } from "@/types"
 import { formatClientErrorMessage } from "@/lib/error-utils"
-import { fetchChannelName, fetchPlaylistName } from "@/lib/url-type-helpers"
 import { PIPELINE_STEP_LABELS, getYouTubeThumbnailUrl } from "@/lib/constants"
 
 const PIPELINE_STEPS: PipelineStep[] = PIPELINE_STEP_LABELS.map((label, i) => ({
@@ -31,15 +31,6 @@ export default function Home() {
   const [rawSegments, setRawSegments] = useState<TranscriptSegment[] | null>(null)
   const [currentUrl, setCurrentUrl] = useState<string | null>(null)
   const [urlType, setUrlType] = useState<'video' | 'playlist' | 'channel' | null>(null)
-
-  // Channel/playlist detection
-  const [detectedChannelUrl, setDetectedChannelUrl] = useState<string | null>(null)
-  const [detectedPlaylistUrl, setDetectedPlaylistUrl] = useState<string | null>(null)
-  const [channelName, setChannelName] = useState<string | null>(null)
-  const [playlistName, setPlaylistName] = useState<string | null>(null)
-  const [isFetchingChannelInfo, setIsFetchingChannelInfo] = useState(false)
-  const [isFetchingPlaylistInfo, setIsFetchingPlaylistInfo] = useState(false)
-  const [externalUrl, setExternalUrl] = useState<string | null>(null)
 
   // Tab override for VideoPreview (set after pipeline navigates to AI Summary)
   const [activeTabOverride, setActiveTabOverride] = useState<string | null>(null)
@@ -61,10 +52,11 @@ export default function Home() {
 
   const processingOptions = useProcessingOptions()
   const transcriptProcessing = useTranscriptProcessing()
+  const detection = useUrlDetection()
 
   const handleUrlSubmit = async (url: string) => {
     setCurrentUrl(url)
-    setExternalUrl(null)
+    detection.clearExternalUrl()
 
     const validation = validateAndParseUrl(url)
     if (!validation.isValid) {
@@ -76,42 +68,18 @@ export default function Home() {
     setUrlType(detectedType)
 
     if (detectedType === 'playlist') {
-      setDetectedPlaylistUrl(url)
-      setDetectedChannelUrl(null)
-      setChannelName(null)
       setVideoMetadata(null)
       setRawSegments(null)
       setFetchError(null)
-
-      setIsFetchingPlaylistInfo(true)
-      try {
-        const name = await fetchPlaylistName(url)
-        setPlaylistName(name)
-      } catch {
-        setPlaylistName('Playlist')
-      } finally {
-        setIsFetchingPlaylistInfo(false)
-      }
+      await detection.handlePlaylistDetected(url)
       return
     }
 
     if (detectedType === 'channel') {
-      setDetectedChannelUrl(url)
-      setDetectedPlaylistUrl(null)
-      setPlaylistName(null)
       setVideoMetadata(null)
       setRawSegments(null)
       setFetchError(null)
-
-      setIsFetchingChannelInfo(true)
-      try {
-        const name = await fetchChannelName(url)
-        setChannelName(name)
-      } catch {
-        setChannelName('Channel')
-      } finally {
-        setIsFetchingChannelInfo(false)
-      }
+      await detection.handleChannelDetected(url)
       return
     }
 
@@ -121,10 +89,7 @@ export default function Home() {
       return
     }
 
-    setDetectedChannelUrl(null)
-    setDetectedPlaylistUrl(null)
-    setChannelName(null)
-    setPlaylistName(null)
+    detection.handleClearDetectionMessage()
 
     setIsFetchingTranscript(true)
     setFetchError(null)
@@ -185,16 +150,8 @@ export default function Home() {
   }
 
   const handleClearDetectionMessage = () => {
-    setDetectedChannelUrl(null)
-    setDetectedPlaylistUrl(null)
-    setChannelName(null)
-    setPlaylistName(null)
+    detection.handleClearDetectionMessage()
     setUrlType(null)
-  }
-
-  const handleCopyUrl = (url: string) => {
-    setExternalUrl(url)
-    handleClearDetectionMessage()
   }
 
   // ---- Pipeline orchestration ----
@@ -398,12 +355,6 @@ export default function Home() {
     pipelineEpisodeRef.current = null
   }, [pipelineSteps, transcriptProcessing])
 
-  const detectionMessage = detectedChannelUrl && channelName
-    ? { type: 'channel' as const, name: channelName, url: detectedChannelUrl }
-    : detectedPlaylistUrl && playlistName
-    ? { type: 'playlist' as const, name: playlistName, url: detectedPlaylistUrl }
-    : null
-
   return (
     <Container className="py-12">
       <div className="flex flex-col gap-8 max-w-7xl mx-auto">
@@ -413,10 +364,10 @@ export default function Home() {
           <div className="flex flex-col gap-6">
             <ProcessingOptions
               onSubmit={handleUrlSubmit}
-              detectionMessage={detectionMessage}
-              onCopyUrl={handleCopyUrl}
-              externalUrl={externalUrl}
-              onExternalUrlCleared={() => setExternalUrl(null)}
+              detectionMessage={detection.detectionMessage}
+              onCopyUrl={detection.handleCopyUrl}
+              externalUrl={detection.externalUrl}
+              onExternalUrlCleared={detection.clearExternalUrl}
               onClearDetectionMessage={handleClearDetectionMessage}
               onSummarize={handleSummarize}
             />
@@ -424,19 +375,19 @@ export default function Home() {
 
           {/* Right Column - Outputs */}
           <div className="flex flex-col gap-6">
-            {(urlType === 'video' || detectedChannelUrl || detectedPlaylistUrl) ? (
+            {(urlType === 'video' || detection.detectedChannelUrl || detection.detectedPlaylistUrl) ? (
               <>
                 <VideoPreview
                   metadata={videoMetadata}
-                  isLoading={isFetchingTranscript || isFetchingChannelInfo || isFetchingPlaylistInfo}
+                  isLoading={isFetchingTranscript || detection.isFetchingChannelInfo || detection.isFetchingPlaylistInfo}
                   error={fetchError}
                   errorSuggestion={errorSuggestion}
                   onProcess={rawSegments ? handleProcessTranscript : undefined}
                   transcript={transcriptProcessing.result}
                   onReProcess={transcriptProcessing.result ? handleReProcess : undefined}
-                  onPasteUrl={handleCopyUrl}
-                  channelUrl={detectedChannelUrl}
-                  playlistUrl={detectedPlaylistUrl}
+                  onPasteUrl={detection.handleCopyUrl}
+                  channelUrl={detection.detectedChannelUrl}
+                  playlistUrl={detection.detectedPlaylistUrl}
                   activeTabOverride={activeTabOverride}
                   preGeneratedSummaries={pipelineSummaries}
                 />
