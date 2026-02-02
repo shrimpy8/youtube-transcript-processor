@@ -48,8 +48,9 @@ next-env.d.ts
 docs/archive/
 docs/PROMPT_TUNING_LOG.md
 
-# AI summary test outputs
-ai_summary/
+# AI summary — ignore everything except .txt example outputs
+ai_summary/*
+!ai_summary/*.txt
 
 # Feature development artifacts (docs, screenshots, analysis)
 /features/

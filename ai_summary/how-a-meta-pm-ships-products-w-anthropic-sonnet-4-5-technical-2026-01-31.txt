@@ -1,0 +1,364 @@
+### 1. Tools & Technologies Mentioned
+
+#### **Claude** (Anthropic)
+- **Category**: AI/ML — Large Language Model
+- **Versions**: Sonnet 3 (explicitly mentioned as the version that changed everything for Zevy); Claude Code (used within Cursor)
+- **Use case**: Primary development agent, code generation, planning, exploration, code review, learning partner
+- **Key features**: Strong communication skills, opinionated but collaborative, excellent at code understanding and planning, used for technical decision-making and architecture discussions
+- **Limitations**: Can be "sickophantic" and people-pleasing if not properly prompted; needs guardrails in system prompt to challenge user thinking
+
+#### **ChatGPT Projects** (OpenAI)
+- **Category**: AI/ML — Chatbot with project management
+- **Use case**: Initial learning tool, interview preparation, creating specialized "CTO" co-founder projects with custom instructions and shared knowledge base
+- **Key features**: Projects allow compartmentalization of different contexts (avoiding memory mixing across unrelated topics), custom instructions, shared knowledge base across chats
+- **Limitations**: Memory feature mixes contexts inappropriately (e.g., running advice bleeding into product work); too eager to please, doesn't challenge ideas enough; hallucinated that Zustand and Bun JavaScript were the same when they're completely unrelated
+
+#### **Cursor** (IDE)
+- **Category**: Developer Tools — AI-enhanced IDE
+- **Use case**: Primary coding environment for serious development work, hosts Claude Code and Composer agents
+- **Key features**: Slash commands for reusable prompts, file tagging, branch-based development, light mode for gradual code exposure, hosts multiple AI models simultaneously
+- **Limitations**: Not discussed; represents the "deep end" of the learning curve for non-technical users
+
+#### **Bolt** (AI coding platform)
+- **Category**: AI/ML — No-code/low-code builder
+- **Use case**: Early-stage rapid prototyping and learning tool (Zevy's first coding tool after watching YouTube videos in Japan)
+- **Key features**: Extremely eager to write code immediately, great for getting started quickly, handles basic features out-of-box
+- **Limitations**: System prompt makes it too eager to code without planning; struggles with complex features like payment integration; too opinionated about implementation approach; Zevy "outgrew it" and graduated to Cursor
+
+#### **Lovable** (AI coding platform)
+- **Category**: AI/ML — No-code/low-code builder
+- **Use case**: Intermediate learning tool between Bolt and Cursor
+- **Key features**: Similar to Bolt but with improvements; has evolved to include plan mode and ask mode
+- **Limitations**: Same category limitations as Bolt; less control over technical decisions than Cursor
+
+#### **Codex** (OpenAI/ChatGPT)
+- **Category**: AI/ML — Code generation model
+- **Version**: 5.1 Max (ChatGPT's coding model, speaker notes OpenAI "not the best at naming models")
+- **Use case**: Code review, debugging complex issues, peer review of Claude's code
+- **Key features**: Exceptional at solving difficult bugs, works methodically in isolation, best for the "worst problems"
+- **Limitations**: Poor communication, doesn't explain its process ("comes out after two hours and says 'I fixed it'"), not collaborative, terrifying to watch work
+
+#### **Gemini** (Google)
+- **Category**: AI/ML — Large Language Model
+- **Version**: Gemini 3 (explicitly mentioned as "just came out" and "unbelievable at UI")
+- **Use case**: Front-end design and UI work, visual redesigns
+- **Key features**: Exceptional design capabilities, creates beautiful interfaces, strong at visual/aesthetic work
+- **Limitations**: Terrifying development process (deletes entire dashboards then restores them, attempts inappropriate database edits during UI-only tasks), chaotic workflow that would "make you fire that person instantly" if they were human
+
+#### **Anti-Gravity** (Google)
+- **Category**: Developer Tools — AI-enhanced IDE (Google's Cursor competitor)
+- **Use case**: Running Gemini for UI work
+- **Key features**: Shows AI's thought process during development
+- **Limitations**: Exposes Gemini's chaotic workflow, making it stressful to watch
+
+#### **Composer** (Cursor feature)
+- **Category**: AI/ML — Fast coding agent within Cursor
+- **Use case**: Quick, non-complex feature implementation, backend work
+- **Key features**: "Blazing fast," keeps users in flow state, can complete full features in minutes
+- **Limitations**: Not discussed
+
+#### **Linear** (Project Management)
+- **Category**: Project Management — Issue tracking
+- **Use case**: Capturing bugs and feature ideas mid-development, organizing work
+- **Key features**: Connected via MCP (Model Context Protocol) to Claude, allowing AI to create and read issues programmatically
+- **Limitations**: Not discussed
+
+#### **Whisper Flow** (Speech-to-text)
+- **Category**: Productivity — Voice dictation
+- **Use case**: Voice input for creating Linear issues and communicating with AI agents
+- **Key features**: Enables natural conversation-style interaction with development tools
+- **Limitations**: Not discussed
+
+#### **MCP (Model Context Protocol)** (Anthropic)
+- **Category**: AI/ML — Tool integration protocol
+- **Use case**: Connecting AI agents to external tools like Linear
+- **Key features**: Gives AI the ability to use tools programmatically (e.g., creating Linear issues, reading tickets)
+- **Limitations**: Not discussed
+
+#### **Cap** (Screen recording)
+- **Category**: Productivity — Screen recording
+- **Use case**: Loom alternative for creating product demos and documentation
+- **Key features**: Open source, well-crafted, attention to detail, more affordable than Loom
+- **Limitations**: Not discussed
+
+#### **Studymate** (Zevy's product)
+- **Category**: Education — AI-powered quiz platform
+- **Use case**: Students upload study materials to generate interactive tests
+- **Key features**: PDF upload, customizable question count, difficulty levels, page selection, generates challenging comprehension questions with hints and explanations, uses Gemini for quiz generation
+- **Backend**: Uses Gemini to process uploaded materials and generate quizzes based on system prompts and user-selected parameters
+- **Limitations**: Initially only supported multiple-choice questions (working to add fill-in-the-blank and true/false)
+
+#### **Zustand** (JavaScript framework)
+- **Category**: Developer Tools — State management library
+- **Use case**: State management in Zevy's app (mentioned in context of ChatGPT hallucination)
+- **Key features**: Not discussed (only mentioned as example of ChatGPT confusing it with Bun JavaScript)
+- **Limitations**: Not discussed
+
+#### **Bun JavaScript** (Anthropic acquisition)
+- **Category**: Developer Tools — JavaScript runtime/framework
+- **Use case**: Zevy was researching it to understand what Anthropic acquired
+- **Key features**: Not discussed in detail (only mentioned that it's nothing like Zustand)
+- **Limitations**: Not discussed
+
+### 2. Workflows & Processes
+
+#### AI-Assisted Feature Development Workflow
+**Purpose**: Build production features as a non-technical PM using AI agents
+
+**Steps**:
+1. **Capture idea**: Use `/create-issue` slash command mid-development to quickly capture bugs or feature ideas
+   - Claude asks brief clarifying questions
+   - Creates structured Linear issue via MCP
+   - Issue includes: TLDR, current state, expected outcomes, context
+   - Ready for future pickup, not immediately buildable
+
+2. **Exploration phase**: Use `/exploration-phase [linear-ticket-number]` when ready to build
+   - Claude fetches Linear ticket via MCP
+   - Analyzes codebase to understand current state
+   - Identifies affected files and technical approach
+   - Returns with clarifying questions about: scope, data model, UX/UI, validation, grading, AI prompt changes
+   - User answers questions (Zevy prepared answers beforehand for demo)
+   - Claude confirms understanding of current system and feature requirements
+
+3. **Create plan**: Use `/create-plan` after exploration
+   - Claude generates markdown file with structured plan
+   - Plan includes: TLDR, critical decisions, task breakdown with status trackers
+   - Plan format allows splitting work across models (e.g., backend to Claude, frontend to Gemini)
+   - Markdown file becomes documentation for future agents working in that area
+
+4. **Execute plan**: Use `/execute-plan` with plan file tagged
+   - Zevy typically uses Cursor's Composer for speed on non-complex work
+   - Composer reads plan and implements in minutes
+   - Alternative: Use Gemini 3 for frontend work, Claude for backend
+   - Work happens on Git branch, not live codebase
+
+5. **Review code**: Use `/review` slash command
+   - Claude reviews its own code
+   - Identifies critical, high, and medium bugs
+   - Returns structured review with findings
+
+6. **Peer review**: Use `/peer-review` slash command with reviews from other models
+   - Run same code review in Codex (ChatGPT) and Composer (Cursor)
+   - Copy results from each model
+   - Feed to Claude with `/peer-review [dev-lead-1] [dev-lead-2]`
+   - Claude evaluates peer feedback, either fixes issues or explains why feedback is incorrect
+   - Repeat until no issues remain
+   - Models sometimes get "sassy" (e.g., "this has been raised for the third time and for the third time I'm telling you this is not an issue")
+
+7. **Update documentation**: Use `/update-docs` after feature completion
+   - Documents feature for future AI agents
+   - Ensures next development in that area has proper context
+
+8. **Manual QA**: Test feature locally before peer review
+   - Run app locally to verify functionality
+   - Catch obvious mistakes before AI review
+   - Final human verification before considering feature complete
+
+**Tools used**: Claude Code, Cursor Composer, Codex, Gemini 3, Linear, MCP, Git branches
+
+**Key insight**: "Planning is really important when you're implementing something technical. If the coding agent just starts writing code, this always results in terrible things."
+
+#### AI Post-Mortem Workflow
+**Purpose**: Learn from AI mistakes and improve future performance
+
+**Steps**:
+1. Identify when AI makes a mistake or creates a bad bug
+2. Ask the AI: "What in your system prompt or tooling made you make this mistake?"
+3. AI performs introspection on root cause
+4. Update relevant documentation, tooling, or slash commands based on analysis
+5. Ensure mistake never occurs again
+
+**Tools used**: Claude, cursor system prompts, slash commands, markdown documentation
+
+**Tip from transcript**: "When Claude fails to execute something correctly, ask it what in its prompt/tooling caused the error, then update docs. This is probably one of the most important things that divides people who are okay with using AI and people who actually know how to use it."
+
+#### Progressive AI Tool Graduation Workflow
+**Purpose**: Gradually build technical confidence as a non-technical person
+
+**Steps**:
+1. Start with ChatGPT Projects
+   - Create "CTO" project with opinionated system prompt
+   - Use beautiful UI in "light mode" (non-intimidating)
+   - Learn to converse about technical decisions
+   - Build comfort with technical concepts through conversation
+
+2. Graduate to Bolt/Lovable
+   - Move to visual builders when comfortable with concepts
+   - Build simple apps with out-of-box features
+   - Learn by doing with training wheels
+   - Graduate when you "outgrow" the tool's limitations
+
+3. Move to Cursor
+   - Transition when you want more control
+   - Start in light mode for "exposure therapy"
+   - Use slash commands to structure work
+   - Eventually "go full dark mode, go full dev"
+
+**Rationale**: "If you're non-technical like me, code is terrifying. I look at it as exposure therapy. Gradually ease in until you open a terminal."
+
+#### Multi-Model Code Review Strategy
+**Purpose**: Catch different types of bugs by leveraging different model strengths
+
+**Approach**:
+- Run code review in Claude (communicative, thorough)
+- Run same review in Codex (best at finding gnarly bugs)
+- Run same review in Composer (fast, different perspective)
+- Feed all results to Claude via `/peer-review`
+- Let models "fight it out" until consensus
+
+**Mental model**: "Imagine Claude as your dev lead, Codex as the hoodie-wearing genius in the dark room who only emerges to fix the worst bugs, and Gemini as the crazy scientist who's terrifying to watch but produces beautiful designs."
+
+**Tip**: "Run reviews in multiple models — they catch different bugs."
+
+#### Interview Preparation Workflow (AI-Assisted)
+**Purpose**: Prepare for competitive PM interviews (e.g., Meta) using AI
+
+**Steps**:
+1. Create ChatGPT Project as interview coach
+   - Feed with best online resources (e.g., Ben Arez frameworks)
+   - Give coach persona (not a people-pleaser, focused on readiness)
+   
+2. Analyze question patterns
+   - Use Comet (Perplexity's browser agent) to analyze Lewis Lynn question bank
+   - Identify most frequently asked questions
+   - Prioritize mock practice based on frequency
+
+3. Mock interviews with AI
+   - Practice responses with AI coach
+   - Get harsh, honest feedback (not feel-good feedback)
+   - Ask AI to play the candidate for questions you don't have time to mock
+   - Learn from AI's "perfect answers"
+
+4. Build custom practice tools
+   - Example: Built quiz game in Base44 for segmentation practice
+   - Played on bus to work for spaced repetition
+
+5. Graduate to human mocks
+   - Cold outreach on LinkedIn for real mock interviews
+   - Human mocks still critical for competitive roles
+
+**Tools used**: ChatGPT Projects, Comet (Perplexity browser), Base44, Ben Arez frameworks, Lewis Lynn question bank
+
+**Key insight**: "AI gets you to a point, but for super competitive prep like Meta PM, there's no way around human mocks."
+
+#### Making Codebase AI-Native
+**Purpose**: Enable AI agents to navigate and understand codebase effectively
+
+**Approach**:
+- Add markdown files explaining structure for agents
+- Document high-level architecture in plain text
+- Explain how to work in specific areas of codebase
+- Create navigation guides for AI
+- Store plans as markdown files in codebase for future reference
+
+**Tip**: "Making your codebase AI-native is a really important step. My codebase has a ton of plain text — markdown files that explain to agents how to work in certain areas and high-level structure so agents navigate easier."
+
+### 3. Tips, Techniques & Best Practices
+
+#### Slash Command Architecture
+- Create reusable prompts as slash commands for repeated workflows
+- Store in codebase as files that can be invoked with `/command-name`
+- Commands inject full prompt into AI context
+- Use placeholders (arguments) for dynamic context (e.g., `/exploration-phase linear-88`)
+- Build library over time as patterns emerge
+
+**Zevy's core slash commands**:
+- `/create-issue`: Quickly capture ideas mid-development
+- `/exploration-phase [ticket]`: Deep analysis before building
+- `/create-plan`: Generate structured implementation plan
+- `/execute-plan`: Build the feature
+- `/review`: Self-code review
+- `/peer-review [lead-1] [lead-2]`: Multi-model review synthesis
+- `/update-docs`: Document changes for future agents
+- `/learning-opportunity`: Explain complex concepts for learning
+- `/deslop`: Remove AI-generated slop from code (Cursor feature)
+
+#### Prompt Engineering for Technical AI
+**System prompt principles** (from Zevy's "CTO" project):
+- Define AI as "complete technical owner" of implementation
+- User owns problem and user feeling; AI owns how it's built
+- Explicitly tell AI to challenge your thinking
+- Disable people-pleasing behaviors
+- Add "I want you to make me feel bad" for feedback scenarios
+- Include workflow steps in system prompt
+- Reference 80/20 rule for explanations (learning opportunity command)
+
+**Example from `/create-issue`**: "The user is mid-development and thought of a bug or feature improvement. Capture it fast so they can keep working."
+
+**Example from `/learning-opportunity`**: "I am a technical PM in the making. I have mid-level engineering knowledge. I understand architecture. Explain using the 80/20 rule."
+
+#### Model Selection Strategy
+- **Claude**: Planning, exploration, architecture decisions, learning, communication-heavy tasks
+- **Codex (ChatGPT)**: Debugging gnarly bugs, solving worst problems
+- **Gemini 3**: Frontend/UI work, visual design, anything aesthetic
+- **Composer (Cursor)**: Fast, simple implementations, non-complex features
+
+**Tip**: "Code is just words. Files on your computer. You can work on the same project and carry it from app to app. Work with multiple models and apps on the same project."
+
+#### Learning Through AI
+- Use `/learning-opportunity` when encountering difficult concepts
+- Ask AI to explain as if you're a "technical PM in the making with mid-level engineering knowledge"
+- Don't rush past confusing parts — stop and learn
+- Use AI for "exposure therapy" to gradually build comfort with code
+- Review AI's perfect answers to interview questions to learn ideal responses
+
+**Philosophy**: "Don't look at AI as outsourcing your thinking. It's like that really smart person with context or your mentor, but always available and doesn't judge you."
+
+#### Quality Control and Slop Prevention
+- Own your outputs completely — never say "sorry, that was built by AI"
+- Guide AI with context on your writing style and what you're solving
+- Run `/deslop` command after completion (Cursor feature)
+- Spend time in exploration phase — don't let eager agents start coding immediately
+- Use exposure therapy approach: if output looks wrong to you, it probably is
+
+**Tip from transcript**: "If you just brought in a junior and said 'write a strategy deck' with no guidelines, they'd go online and find 'top strategy deck' and reproduce it. That's what AI does — it's fed all of the internet. Guide it with context."
+
+#### Progressive Skill Building
+- Start with ChatGPT Projects (safe, beautiful UI, conversational)
+- Graduate to Bolt/Lovable when you understand concepts
+- Move to Cursor when you want control and have outgrown simpler tools
+- Don't skip steps — each level builds necessary comfort
+- Expect to "outgrow" tools as your knowledge increases
+
+**When to graduate**: "When you start feeling limited by the tool's opinions. When you want to make technical decisions yourself."
+
+#### Working with AI at Companies
+- Make codebase AI-native first (requires technical team buy-in)
+- Add markdown documentation for AI navigation
+- Don't ship heavy database migrations or big projects as non-technical PM
+- Build contained UI projects and send PRs to devs for final review
+- Use AI as collaborative learning opportunity with dev team
+- Expect skepticism from developers — requires sales work
+
+**Realistic scope**: "Contained UI projects, especially if you just build it, create the PR, and send it to a dev to do final finishes — that's definitely possible."
+
+#### Career Advice for Junior PMs
+- Be a "10x learner" not a "10x PM" early in career
+- No one expects you to have all the answers
+- Identify each senior PM's strength and use them as mentors for that area
+- Share work-in-progress early (don't try to impress with perfect first draft)
+- Your success becomes your mentors' success when you collaborate
+- Use AI to "play at a higher level" than your experience would normally allow
+- Get reps on strategy, marketing, messaging through side projects
+
+**Key mindset shift**: "They had zero expectation of me being a 10x PM, but the expectation was being a 10x learner."
+
+#### General AI Usage Philosophy
+- Think "AI first" when facing any new challenge or problem
+- Use AI as tuition/learning investment, not just a cost
+- Look at AI spending as "tuition" for learning
+- Default to AI immediately for problems (generational shift)
+- Combine AI with human expertise for best results
+- Use AI to get more reps in areas outside your day job scope
+
+**Mantra**: "You won't be replaced by AI. You'll be replaced by someone better at using AI than you."
+
+### 4. Metrics & Numbers
+
+- **AI credits cost**: "A couple bucks in AI credits" per feature build (Zevy doesn't track closely, considers it "tuition")
+- **Feature build time**: Minutes for full features using Composer (compared to days/weeks for human dev team)
+- **Localization project**: Fully localized Studymate from Hebrew to English in 2 days (would take dev team weeks)
+- **Personal website**: From no domain to live site in 1.5 hours
+- **Parallel development**: Ran 3 AI agents simultaneously (podcast prep, localization, personal site) with nothing to do but wait
+- **Studymate quiz parameters**: 30% of questions to be fill-in-the-blank (new feature being built), 6 potential answers for 2 blank spots, 2 correct answers total (1 per blank)
+- **Thermal clothing business margins**: Started at $4 profit per $20-25 sale (6th-7th in supply chain), negotiated to $12.5 cost for ~100% profit margin by going direct to importer

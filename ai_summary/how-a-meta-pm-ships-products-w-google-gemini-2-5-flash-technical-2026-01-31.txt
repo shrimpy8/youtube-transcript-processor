@@ -1,0 +1,159 @@
+### 1. Tools & Technologies Mentioned
+
+#### **ChatGPT** (GPT projects / GBT)
+-   **Category**: AI/ML — Large Language Model
+-   **Use case**: Initially used for creating "CTO" projects (shared folders of chats with custom instructions and shared knowledge base) to compartmentalize different facets of life and mitigate "people pleaser" tendencies.
+-   **Key features**: Memory feature (though speaker noted it mixed up contexts), ability to take custom instructions.
+-   **Limitations**: Memory feature mixed up contexts. Described as a "people pleaser" and "sickopantic," which could lead to accepting "dumbest ideas" (e.g., incorrectly agreeing that `Bun JavaScript` was similar to `Zustand`).
+
+#### **Claude** (Anthropic)
+-   **Category**: AI/ML — Large Language Model
+-   **Version**: Sonnet 3 (specifically mentioned as the version available when the speaker started building with AI).
+-   **Use case**: Primary AI agent in the speaker's `Cursor` workflow, serving as a "dev lead" or "CTO." Used for code review (`/review` command), exploration phase, plan creation, and learning opportunities. Also used for interview prep.
+-   **Key features**: Strong at understanding the codebase and asking clarifying questions during exploration, communicative, smart, opinionated, collaborative. Can go "introspective" to identify root causes of mistakes.
+-   **Limitations**: Not discussed beyond general AI limitations.
+
+#### **Claude Code**
+-   **Category**: AI/ML — AI-enhanced coding environment
+-   **Use case**: Runs within `Cursor`, functions as the main AI agent (`Claude`) for the entire development workflow (exploration, planning, execution, review, documentation).
+-   **Key features**: Full access to the code system, full tools to operate on code.
+-   **Limitations**: Requires the user to make "a lot of decisions" compared to more opinionated tools.
+
+#### **Cursor**
+-   **Category**: Developer Tools — AI-enhanced IDE
+-   **Use case**: The primary environment for the speaker's AI-assisted development workflow. Houses `Claude Code` and provides slash commands.
+-   **Key features**: Provides an interface for `Claude Code` to access all code files, supports slash commands (reusable prompts), runs `Composer` (Cursor's model).
+-   **Limitations**: Can be "terrifying" for non-technical users initially, requiring a gradual "exposure therapy" approach.
+
+#### **Codeex** (GPT's model)
+-   **Category**: AI/ML — AI-enhanced coding environment / Code Review
+-   **Version**: `5.1 Max` (mentioned by the speaker, though not explicitly tied to "GPT's model").
+-   **Use case**: Used for secondary code reviews to catch different bugs than `Claude`.
+-   **Key features**: Described as "the best coder within the company," good at solving "worst problems." Has a built-in code review feature.
+-   **Limitations**: Described as "really not communicative," not explaining what happened after fixing bugs.
+
+#### **Linear**
+-   **Category**: Project Management — Issue Tracking
+-   **Use case**: Integrated into the workflow for creating and tracking product issues (bugs, features, improvements).
+-   **Key features**: Captures issues with TLDDR, current state, expected outcomes, and context.
+-   **Limitations**: While useful for a company of one, speaker noted they "wouldn't create linear issues at work like this" in a larger company context, as they are "ready to start being explored" rather than "ready to be built."
+
+#### **Whisperflow**
+-   **Category**: Productivity — Dictation/Voice Input
+-   **Use case**: Used to dictate commands and input to AI models, particularly for creating issues.
+-   **Key features**: Allows voice interaction with AI, described as similar to talking to an engineer.
+-   **Limitations**: Not discussed.
+
+#### **Gemini** (Google)
+-   **Category**: AI/ML — Large Language Model
+-   **Version**: `Gemini 3` (specifically mentioned for UI tasks).
+-   **Use case**: Used for generating quizzes in the Studymate app. `Gemini 3` is used for frontend development (UI tasks).
+-   **Key features**: Good at design and UI.
+-   **Limitations**: Described as a "crazy scientist" with a "terrifying" thought process (e.g., suggesting deleting a dashboard or editing a database during a redesign), making it scary to watch work.
+
+#### **Composer** (Cursor's model)
+-   **Category**: AI/ML — Code Execution
+-   **Use case**: Used for executing code plans, especially for tasks that are "not that complex."
+-   **Key features**: "Super fast" and "blazing fast."
+-   **Limitations**: Not discussed.
+
+#### **Bolt** (or `Lovable`, `Replit`, `Base 44`, `v0`)
+-   **Category**: AI/ML — AI-powered App Builders / Low-code platforms
+-   **Use case**: Initial tools used by the speaker to build apps with AI.
+-   **Key features**: "Super eager to write code," "take all kind of guesswork and hard decisions out for the user," making it "very easy to build." `Base 44` specifically does "signin with Google" and sets up a database out of the box.
+-   **Limitations**: "Very opinionated on how I should do things," offers "less control," not enough for "really serious apps" (e.g., connecting payments).
+
+#### **Comet** (Perplexity's browser)
+-   **Category**: AI/ML — AI-enhanced browser / Research
+-   **Use case**: Used to run analyses on a question bank (e.g., Lewis Lynn's question bank) to prioritize interview preparation questions.
+-   **Key features**: Agent can run analyses.
+-   **Limitations**: Not discussed.
+
+#### **CAP**
+-   **Category**: Productivity — Screen recording / Video messaging
+-   **Use case**: Open-source alternative to `Loom`.
+-   **Key features**: Well-crafted, "sweating the details."
+-   **Limitations**: Not discussed.
+
+### 2. Workflows & Processes
+
+#### Initial "CTO" Project Workflow (using `ChatGPT` / `GPT` projects)
+This workflow was used by the speaker before transitioning to `Cursor` and `Claude Code`.
+1.  **Define CTO role**: Create a `GPT` project with a custom prompt instructing the AI to act as the "complete technical owner" of the project. This prompt included directives like "challenge me," "don't be a people pleaser," and "own how this is going to be built."
+2.  **Problem ownership**: The human (PM) owns the problem and user experience.
+3.  **Technical consultation**: The human consults the AI "CTO" for questions about architecture and technical decisions.
+4.  **Mitigate AI eager-coding**: The "CTO" role ensures planning happens before code generation, preventing "gnarly bugs" from immediate code writing on complex tasks (like payments or database changes).
+-   **Tools used**: `ChatGPT` (GPT projects).
+-   **Tips/Gotchas**: Recommended for beginners to start here for "exposure therapy" and to take time to converse and learn in a chatbot environment before moving to code-centric tools.
+
+#### AI-Assisted Product Building Workflow (using `Cursor` with `Claude Code`)
+This is the speaker's current, advanced workflow for building features in their `Studymate` app.
+1.  **Create Issue**:
+    *   **Purpose**: Quickly capture a bug, feature, or improvement idea without interrupting current work.
+    *   **Steps**: Use `Whisperflow` to dictate the idea. Invoke `/create issue` slash command in `Claude Code` within `Cursor`. `Claude` asks clarifying questions. `Claude` uses MCP (Anthropic's tool-use technology) to create an issue in `Linear`.
+    *   **Tools**: `Cursor`, `Claude Code`, `Whisperflow`, `Linear`.
+    *   **Tips/Gotchas**: The `/create issue` prompt tells `Claude` the user is "mid development" and needs quick capture. The generated `Linear` issue is "ready to start being explored," not necessarily "ready to be built."
+2.  **Exploration Phase**:
+    *   **Purpose**: Deeply understand the problem, current codebase state, affected files, and best technical implementation.
+    *   **Steps**: Invoke `/exploration phase` slash command with `Linear` ticket ID as an argument (e.g., `linear 88`). `Claude` fetches the `Linear` ticket, reads codebase files, analyzes structure, and asks clarifying questions.
+    *   **Tools**: `Cursor`, `Claude Code`, `Linear`.
+    *   **Tips/Gotchas**: This phase is crucial for avoiding "vibe coding" and ensuring serious app development. The `Claude.md` system prompt guides `Claude` to challenge thinking and understand the workflow.
+3.  **Create Plan**:
+    *   **Purpose**: Generate a detailed technical plan for implementing the feature.
+    *   **Steps**: Invoke `/create plan` slash command. `Claude` creates a markdown file based on a pre-defined template, including TLDDR, critical decisions, and broken-down tasks with status trackers.
+    *   **Tools**: `Cursor`, `Claude Code`.
+    *   **Tips/Gotchas**: The markdown plan is useful for splitting tasks among different models (e.g., `Gemini 3` for frontend, `Composer` for simple tasks) and for future agents to understand what's been done.
+4.  **Execute Plan**:
+    *   **Purpose**: Build the feature according to the plan.
+    *   **Steps**: Invoke `execute` command, tagging the plan file. `Composer` (or other models like `Gemini 3` for UI) executes the plan.
+    *   **Tools**: `Cursor`, `Composer` (or `Gemini 3`).
+    *   **Tips/Gotchas**: `Composer` is "blazing fast." The choice of model can depend on the task (e.g., `Gemini 3` for UI).
+5.  **Review & Peer Review**:
+    *   **Purpose**: Identify and fix bugs in the AI-generated code.
+    *   **Steps**:
+        *   Manually QA the app locally.
+        *   Invoke `/review` slash command to have `Claude` review its own code.
+        *   Run code reviews in other models (e.g., `Codeex`, `Composer`) for different perspectives.
+        *   Invoke `/peer review` slash command, pasting results from other models. This prompt tells `Claude` (as the "dev lead") to evaluate the other models' findings, either explain why they are not real issues or fix them.
+    *   **Tools**: `Cursor`, `Claude Code`, `Codeex`, `Composer`.
+    *   **Tips/Gotchas**: Running multiple models catches different bugs. The "peer review" process encourages the primary agent to justify or fix issues, leveraging the distinct characteristics of each model. Speaker uses `/learning opportunity` during this phase to understand complex issues.
+6.  **Update Documentation**:
+    *   **Purpose**: Document the new feature and ensure future agents can write better code by having updated context.
+    *   **Steps**: Invoke `/update docs` slash command.
+    *   **Tools**: `Cursor`, `Claude Code`.
+
+#### AI-Assisted Interview Preparation Workflow
+1.  **Project Setup**: Create a `Claude` project to act as an interview "coach."
+2.  **Information Ingestion**: Feed the project with "all the best information out there" (e.g., frameworks from Ben Arez's guest post).
+3.  **Question Prioritization**: Use `Comet` (Perplexity's browser) to analyze online question banks (e.g., Lewis Lynn's) to identify and prioritize frequently asked questions.
+4.  **Mock Interviews**: Conduct mock interviews with the AI coach.
+5.  **Targeted Practice**: Create specific quiz games (e.g., in `Base 44` for segmentation questions) to practice weak areas.
+6.  **Feedback Loop**: After mocks, ask `Claude` (primed as a non-judgmental coach) for critical feedback on performance.
+7.  **Learning from AI**: Ask `Claude` to "play the candidate" and provide perfect answers for questions where the user needs to learn.
+-   **Tools**: `Claude` (projects), `Comet` (Perplexity's browser), `Base 44` (for specific quiz games).
+-   **Tips/Gotchas**: AI mocks take you to a point, but "human mocks" (cold outreach on LinkedIn) are critical for final preparation.
+
+### 3. Tips, Techniques & Best Practices
+
+*   **Graduate AI Tools Gradually**: Start with `GPT` projects (chatbot UI, simple), then move to `Bolt` or `Lovable` (more coding-focused but opinionated), and finally to `Cursor` with `Claude Code` (full control, exposure therapy). This eases non-technical users into code.
+*   **Create an "AI-Native" Codebase**: Add plain text markdown files within the codebase that explain high-level structure and how agents should work in certain areas. This helps AI agents navigate and understand the code more easily.
+*   **Use Slash Commands for Efficiency**: Save reusable prompts as slash commands within the codebase to automate repetitive tasks and inject context quickly.
+*   **Leverage Multiple AI Models**: Use different models (e.g., `Claude`, `Codeex`, `Gemini`, `Composer`) for their specific strengths (e.g., `Gemini 3` for UI, `Composer` for speed, `Claude` for communication/planning).
+*   **Implement Multi-Model Code Review**: Have multiple AI models review the same code (e.g., `Claude`, `Codeex`) and then use a "peer review" process where the primary agent (`Claude`) evaluates and resolves conflicts from other models' findings. This catches diverse bugs and improves code quality.
+*   **Conduct Post-Mortems on AI Mistakes**: When an AI makes a mistake or fails to execute correctly, ask it: "what in your system prompt or tooling made you make this mistake?" Then, update the relevant documentation, tooling, or prompts to prevent recurrence. This is a "biggest hack for productivity."
+*   **Own AI Outputs**: Do not blame AI for errors. "If you put anything out there or show something in a product review and you say, 'Oh, sorry, that was built by AI,' that's that's your mistake."
+*   **Guide AI with Context**: To reduce "slop" (poor quality output), provide AI with clear guidelines, context on your writing style, and what you are trying to solve, similar to how you would brief a junior team member.
+*   **Use AI for Learning**: Employ a "learning opportunity" slash command to prompt `Claude` to explain complex technical concepts (e.g., architecture, database issues) using the 80/20 rule, tailored for a "technical PM in the making" with "mid-level engineering knowledge."
+*   **Embrace the "10x Learner" Mindset**: Especially for junior roles, focus on being the best learner rather than the "smartest person in the room." Use AI as a constant learning partner.
+*   **Be Curious, Optimistic, and Hardworking**: These traits are highlighted as key to leveraging AI's capabilities and becoming a "builder."
+
+### 4. Metrics & Numbers
+
+*   **Feature Build Cost**: Speaker mentioned spending "a couple bucks in AI credits" per feature build.
+*   **Localization Time**: Speaker localized the Studymate app from Hebrew to English in "two days," noting it "would probably take a dev team weeks."
+*   **Personal Site Build Time**: A personal site went from "no domain no nothing to live on a domain within an hour and a half."
+*   **Concurrent AI Tasks**: The speaker has run "all three of these in parallel" (podcast prep, app localization, personal site build), with "all three of the agents were running."
+*   **Fill-in-the-Blank Questions Specification**: For the new feature, the speaker requested:
+    *   "30% of tests to be generated as fill-in-the-blank questions."
+    *   "six potential answers" for "two blank spots."
+    *   "one correct answer and two incorrect answers for each spot."

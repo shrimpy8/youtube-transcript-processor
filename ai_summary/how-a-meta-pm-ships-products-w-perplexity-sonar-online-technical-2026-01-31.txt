@@ -1,0 +1,110 @@
+### 1. Tools & Technologies Mentioned
+
+#### **Cursor** (AI-enhanced IDE)
+- **Category**: Developer Tools — AI-powered code editor
+- **Use case**: Building full features like fill-in-the-blank questions for Studymate app; running slash commands for workflow steps including issue creation, exploration, planning, execution, review, and documentation
+- **Key features**: Composer model for fast code execution (e.g., "ridiculously fast" for full features in minutes); supports multiple models like Claude Code; slash commands as reusable prompts (e.g., `/create-issue`, `/exploration-phase`, `/create-plan`, `/execute-plan`, `/review`, `/peer-review`); integrates with Linear via MCP (Anthropic tool-use tech); local app running for QA
+- **Limitations**: Intimidating for non-technical users initially; requires "exposure therapy" to code
+
+#### **Claude** (Anthropic, Sonnet 3 mentioned)
+- **Category**: AI/ML — Large Language Model
+- **Use case**: Core agent for exploration, planning, code execution, self-review, peer review, learning; powers Claude Code within Cursor; generates Linear issues; creates markdown plans with status trackers, TLDR, critical decisions
+- **Key features**: Challenges user thinking via custom `.claude.md` system prompt; slash commands injected as prompts; fetches Linear tickets; asks clarifying questions on data model, UX/UI, validation; opinionated and collaborative "CTO" personality; introspects on mistakes for post-mortems
+- **Limitations**: Can produce bugs needing review; sassy in peer review (e.g., "this has been raised for the third time and for the third time I'm telling you this is not an issue")
+
+#### **Claude Code** (runs within Cursor)
+- **Category**: AI/ML — Code-focused LLM interface
+- **Use case**: Mid-development issue capture, exploration phase (understands codebase/files), plan creation, code review; primary "dev lead" agent
+- **Key features**: Access to full codebase; slash commands for workflow; generates high-quality Linear issues with TLDR, current state, expected outcomes; uses MCP for Linear integration
+- **Limitations**: Not discussed
+
+#### **Codeex** (OpenAI competitor to Claude Code)
+- **Category**: AI/ML — Code review tool
+- **Use case**: Peer code review alongside Claude and Composer; paste results into Claude's `/peer-review`
+- **Key features**: Built-in code review (e.g., "review all the code in this branch"); catches different bugs than Claude; "best coder" personality (non-communicative, fixes bugs in "dark room")
+- **Limitations**: Takes longer than Composer (e.g., "a few minutes")
+
+#### **Composer** (Cursor model)
+- **Category**: AI/ML — Fast execution model in Cursor
+- **Use case**: Execute plans (e.g., backend/frontend splits); code review
+- **Key features**: "Blazing fast" and "super fast" for non-complex tasks; tags files for execution (e.g., `@plan.md execute`)
+- **Limitations**: Not discussed
+
+#### **Gemini** (Google)
+- **Use case**: UI tasks (e.g., frontend from plans); generates quizzes in Studymate via system prompt
+- **Key features**: "Unbelievable at UI"; "crazy scientist" personality good at design despite scary process
+- **Limitations**: Terrifying thought process (e.g., "first things first, I'll delete the dashboard" then reverts)
+
+#### **Linear** (Project management)
+- **Category**: DevOps — Issue tracking
+- **Use case**: Capture bugs/features mid-development via `/create-issue`; reference tickets in exploration (e.g., "linear 88")
+- **Key features**: AI generates issues with TLDR, current state, expected outcomes, priority; MCP-connected
+- **Limitations**: Not discussed
+
+#### **Bolt** (AI app builder)
+- **Category**: AI/ML — No-code/low-code app builder
+- **Use case**: Initial app building post-Japan trip; "super eager to write code"
+- **Key features**: System prompt as "coding agent" for quick starts
+- **Limitations**: Loses control on complex tasks like payments; opinionated harness limits decisions; outgrown for production apps
+
+#### **Lovable** (AI app builder)
+- **Category**: AI/ML — No-code/low-code app builder
+- **Use case**: Initial app building; progressed with plan/ask modes
+- **Key features**: Evolved from eager coding; same underlying Claude model
+- **Limitations**: Opinionated; less control than Cursor; outgrown
+
+#### **GPT Projects** (ChatGPT)
+- **Category**: AI/ML — Shared chat folders
+- **Use case**: "CTO" custom project for technical ownership, planning, challenging ideas; starting point for non-technical users; compartmentalizes contexts (e.g., avoids mixing running/product chats)
+- **Key features**: Custom instructions, shared knowledge base; mitigates "people pleaser" sycophancy; voice mode for ideation like talking to engineer
+- **Limitations**: Memory mixes unrelated contexts; hallucinated (e.g., "Bun JavaScript... exactly the same" as Zustand)
+
+#### **Whisperflow** (Dictation)
+- **Category**: Productivity — Voice-to-text
+- **Use case**: Dictate feature ideas during workflow
+- **Key features**: Not detailed
+- **Limitations**: Not discussed
+
+### 2. Workflows & Processes
+
+#### Full Vibe Coding Workflow for Non-Technical PM (Studymate fill-in-the-blank feature)
+1. **Create Issue** (`/create-issue` in Claude Code): Mid-development, dictate idea (e.g., "add fill-in-the-blank... drag and drop"); Claude asks brief questions, uses MCP to create Linear ticket (STU88) with TLDR, current state, outcomes
+   - **Tools**: Claude Code, Linear, Whisperflow
+2. **Exploration Phase** (`/exploration-phase linear-88`): Claude reads codebase/files, understands issue/current state, asks clarifying questions (scope, data model, UX/UI, validation, grading, system prompt changes)
+   - **Tools**: Claude Code, Linear
+   - **Tip**: Paste prepped answers; use `/learning-opportunity` for 80/20 explanations on hard concepts
+3. **Create Plan** (`/create-plan`): Generates markdown file with TLDR, critical decisions, minimal steps, status trackers from Twitter template
+   - **Tools**: Claude Code
+   - **Tip**: Split backend/frontend for models like Composer/Gemini
+4. **Execute Plan** (e.g., `@plan.md execute` in Composer): Builds code locally; manual QA/run app
+   - **Tools**: Cursor/Composer, Claude Code
+5. **Review** (`/review` in Claude/Codeex/Composer): Self-review finds bugs (critical/high/medium); multiple models catch different issues
+   - **Tools**: Claude Code, Codeex, Composer
+6. **Peer Review** (`/peer-review`): Paste other models' reviews into Claude (as "dev lead"); resolves/explains/fixes (e.g., "don't take at face value... you have more context")
+   - **Tools**: Claude Code + pasted reviews
+7. **Update Docs** (`/update-docs`): Post-mortem on mistakes; ask "what in your system prompt/tooling caused this?"; iterate prompts/docs for future agents
+   - **Tools**: Claude Code
+   - **Tip**: Constant post-mortems prevent repeat bugs; makes codebase "AI-native" with markdown explanations
+
+#### Graduation Path for Non-Technical Users
+1. GPT Projects (CTO prompt: "complete technical owner... challenge me, not people pleaser")
+2. Bolt/Lovable (eager coding, then plan/ask modes)
+3. Cursor (full control, multiple models)
+- **Tools**: GPT Projects → Bolt/Lovable → Cursor/Claude Code
+- **Tip**: "Start slow... exposure therapy"; graduate when outgrowing (e.g., payments in Bolt)
+
+### 3. Tips, Techniques & Best Practices
+- Create **CTO** GPT Project first: "I own the problem/users... you're complete owner of how built; challenge me, not people pleaser" to avoid eager coding bugs[relevant transcript sections].
+- Use **slash commands** as reusable prompts in codebase (e.g., `/learning-opportunity` for 80/20 explanations: "I am technical PM in making... mid-level knowledge").
+- **Multiple models**: Claude (communicative CTO), Codeex (bug-fixer), Composer (fast), Gemini (UI); peer review makes them "fight it out".
+- **Post-mortems always**: Ask AI "what in system prompt/tooling made mistake?"; update docs/prompts (e.g., `.claude.md` workflow/system instructions).
+- **AI-native codebase**: Add markdown files explaining structure/files for agents (technical people setup).
+- **No slop**: Guide AI with context/style; run Cursor `/ds-slop` (Twitter-mentioned).
+- **Start slow**: GPT chat → Bolt/Lovable → Cursor light mode → full dev; voice mode for ideation.
+- **Linear issues**: Good for solo side projects (not production-ready); edit if Claude misunderstood.
+
+### 4. Metrics & Numbers
+- Full features take "a couple minutes" with Composer (vs. days/weeks for human dev team).
+- Localize app (Hebrew to English): 2 days solo (vs. weeks for dev team).
+- Personal site: Domain live in "1.5 hours".
+- Studymate quizzes: 30% fill-in-the-blank; 6 potential answers for 2 blanks (2 correct).
