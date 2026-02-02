@@ -297,7 +297,8 @@ npm run test:e2e      # E2E tests
 - **[docs/INFRASTRUCTURE.md](./docs/INFRASTRUCTURE.md)** - Architecture, tech stack, and infrastructure
 - **[docs/ENV_VARIABLES.md](./docs/ENV_VARIABLES.md)** - Environment variable configuration
 - **[prompts/](./prompts/)** - AI summary prompt templates ([README](./prompts/README.md) for details)
-- **[How It Works](/how-it-works.html)** - Interactive architecture overview page
+- **How It Works** — Interactive architecture overview (available in-app at `/how-it-works.html`)
+  ![How It Works](./screenshots/HowItWorks.png)
 
 ## 📝 Learn More
 
