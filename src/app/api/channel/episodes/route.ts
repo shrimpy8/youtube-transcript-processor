@@ -16,6 +16,81 @@ const limiter = createRateLimiter(RATE_LIMIT_PRESETS.standard)
  * Fetches recent episodes from a YouTube channel URL.
  * Sorts by publishedAt descending, returns top N.
  */
+/**
+ * @swagger
+ * /api/channel/episodes:
+ *   post:
+ *     summary: Fetch recent channel episodes
+ *     description: Returns the most recent episodes from a YouTube channel, sorted by publish date descending.
+ *     tags:
+ *       - Channel
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - channelUrl
+ *             properties:
+ *               channelUrl:
+ *                 type: string
+ *                 description: YouTube channel URL (e.g. https://youtube.com/@channel)
+ *               maxEpisodes:
+ *                 type: integer
+ *                 default: 10
+ *                 description: Maximum episodes to return (1–10)
+ *     responses:
+ *       200:
+ *         description: Episodes fetched successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 requestId:
+ *                   type: string
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     channel:
+ *                       type: object
+ *                       properties:
+ *                         id:
+ *                           type: string
+ *                         name:
+ *                           type: string
+ *                         url:
+ *                           type: string
+ *                     episodes:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           videoId:
+ *                             type: string
+ *                           title:
+ *                             type: string
+ *                           publishedAt:
+ *                             type: string
+ *                             format: date-time
+ *                           url:
+ *                             type: string
+ *                           thumbnail:
+ *                             type: string
+ *                             nullable: true
+ *                           duration:
+ *                             type: number
+ *                             nullable: true
+ *       400:
+ *         description: Invalid input
+ *       404:
+ *         description: Channel not found
+ *       429:
+ *         description: Rate limit exceeded
+ */
 export async function POST(request: NextRequest) {
   const requestId = generateRequestId()
   try {

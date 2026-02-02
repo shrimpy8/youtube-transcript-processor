@@ -15,6 +15,59 @@ const limiter = createRateLimiter(RATE_LIMIT_PRESETS.transcript)
  * POST /api/transcript
  * Fetches transcript for a YouTube video
  */
+/**
+ * @swagger
+ * /api/transcript:
+ *   post:
+ *     summary: Fetch transcript via YoutubeTranscript
+ *     description: Fetches transcript segments for a YouTube video using the YoutubeTranscript library.
+ *     tags:
+ *       - Transcript
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               url:
+ *                 type: string
+ *                 description: YouTube video URL
+ *                 example: "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+ *               videoId:
+ *                 type: string
+ *                 description: YouTube video ID (alternative to url)
+ *                 example: "dQw4w9WgXcQ"
+ *     responses:
+ *       200:
+ *         description: Transcript fetched successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 requestId:
+ *                   type: string
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     videoId:
+ *                       type: string
+ *                     segments:
+ *                       type: array
+ *                       items:
+ *                         $ref: '#/components/schemas/TranscriptSegment'
+ *                     segmentCount:
+ *                       type: integer
+ *       400:
+ *         description: Invalid input (missing URL/videoId or invalid format)
+ *       404:
+ *         description: No transcript available for this video
+ *       429:
+ *         description: Rate limit exceeded
+ */
 export async function POST(request: NextRequest) {
   const requestId = generateRequestId()
   try {
