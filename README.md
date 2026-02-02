@@ -4,16 +4,20 @@ A Next.js application for extracting, processing, and exporting YouTube podcast 
 
 ## 📸 Screenshots
 
+### Home Page
+![Home Page](./screenshots/1_Home_Page.png)
+*Main interface with processing options, favorite channels, and video preview*
+
 ### AI-Powered Episode Summary
-![Episode AI Summary](./screenshots/1_Episode_AI_Summary.png)
+![Episode AI Summary](./screenshots/2_Episode_AI_Summary.png)
 *Extract transcripts and generate AI summaries with bullet points and timestamp links*
 
 ### Favorite Channels with One-Click Summarize
-![Favorite Channel Episode AI Summary](./screenshots/2_Favorite_Channel_Episode_AI_summary.png)
+![Favorite Channel Episode AI Summary](./screenshots/3_Favorite_Channel_Episode_AI_summary.png)
 *Save favorite podcast channels, browse episodes, and summarize with any LLM provider*
 
 ### Dark Mode
-![Dark Mode](./screenshots/3_Dark_Mode.png)
+![Dark Mode](./screenshots/4_Dark_Mode.png)
 *Full dark mode support with system preference detection*
 
 ## 🤖 AI Summary
