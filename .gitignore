@@ -49,7 +49,7 @@ docs/archive/
 docs/PROMPT_TUNING_LOG.md
 
 # AI summary test outputs
-ai_summary/*.txt
+ai_summary/
 
 # Feature development artifacts (docs, screenshots, analysis)
 /features/
