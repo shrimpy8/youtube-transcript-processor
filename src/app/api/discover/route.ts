@@ -12,6 +12,66 @@ const limiter = createRateLimiter(RATE_LIMIT_PRESETS.standard)
  * POST /api/discover
  * Discovers videos from a YouTube playlist or channel
  */
+/**
+ * @swagger
+ * /api/discover:
+ *   post:
+ *     summary: Discover videos from a playlist or channel
+ *     description: Lists videos from a YouTube playlist or channel URL using yt-dlp.
+ *     tags:
+ *       - Discovery
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - url
+ *             properties:
+ *               url:
+ *                 type: string
+ *                 description: YouTube playlist or channel URL
+ *               type:
+ *                 type: string
+ *                 enum: [playlist, channel]
+ *                 description: URL type (auto-detected if omitted)
+ *               maxVideos:
+ *                 type: integer
+ *                 default: 100
+ *                 description: Maximum number of videos to return (1–500)
+ *     responses:
+ *       200:
+ *         description: Videos discovered successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 requestId:
+ *                   type: string
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: string
+ *                     title:
+ *                       type: string
+ *                     url:
+ *                       type: string
+ *                     videoCount:
+ *                       type: integer
+ *                     videos:
+ *                       type: array
+ *                       items:
+ *                         $ref: '#/components/schemas/VideoMetadata'
+ *       400:
+ *         description: Invalid input
+ *       429:
+ *         description: Rate limit exceeded
+ */
 export async function POST(request: NextRequest) {
   const requestId = generateRequestId()
   try {

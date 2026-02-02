@@ -16,6 +16,79 @@ const limiter = createRateLimiter(RATE_LIMIT_PRESETS.transcript)
  * POST /api/transcript/ytdlp
  * Fetches transcript for a YouTube video using yt-dlp
  */
+/**
+ * @swagger
+ * /api/transcript/ytdlp:
+ *   post:
+ *     summary: Fetch transcript via yt-dlp
+ *     description: Fetches transcript and video metadata using yt-dlp. Supports language and format options.
+ *     tags:
+ *       - Transcript
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               url:
+ *                 type: string
+ *                 description: YouTube video URL
+ *               videoId:
+ *                 type: string
+ *                 description: YouTube video ID (alternative to url)
+ *               options:
+ *                 type: object
+ *                 properties:
+ *                   language:
+ *                     type: string
+ *                     default: "en"
+ *                     description: Subtitle language code
+ *                   format:
+ *                     type: string
+ *                     enum: [srt, vtt, ass, best]
+ *                     default: "srt"
+ *                   writeAutoSubs:
+ *                     type: boolean
+ *                     default: true
+ *     responses:
+ *       200:
+ *         description: Transcript and metadata fetched successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 requestId:
+ *                   type: string
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     videoId:
+ *                       type: string
+ *                     segments:
+ *                       type: array
+ *                       items:
+ *                         $ref: '#/components/schemas/TranscriptSegment'
+ *                     segmentCount:
+ *                       type: integer
+ *                     title:
+ *                       type: string
+ *                     channelTitle:
+ *                       type: string
+ *                     publishedAt:
+ *                       type: string
+ *                     thumbnail:
+ *                       type: string
+ *                     duration:
+ *                       type: number
+ *       400:
+ *         description: Invalid input
+ *       429:
+ *         description: Rate limit exceeded
+ */
 export async function POST(request: NextRequest) {
   const requestId = generateRequestId()
   try {

@@ -24,6 +24,69 @@ const limiter = createRateLimiter(RATE_LIMIT_PRESETS.standard)
  * @returns JSON response with summaries array or error message
  * @remarks Supports single provider or 'all' for parallel generation across all providers
  */
+/**
+ * @swagger
+ * /api/ai-summary:
+ *   post:
+ *     summary: Generate AI summary from transcript
+ *     description: Generates an AI-powered summary of a transcript using one or all configured LLM providers (Anthropic, Google Gemini, Perplexity).
+ *     tags:
+ *       - AI Summary
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - transcript
+ *               - provider
+ *             properties:
+ *               transcript:
+ *                 type: string
+ *                 description: Full transcript text to summarize
+ *               provider:
+ *                 type: string
+ *                 enum: [anthropic, google-gemini, perplexity, all]
+ *                 description: LLM provider to use, or "all" for parallel generation
+ *               summaryStyle:
+ *                 type: string
+ *                 enum: [bullets, narrative, technical]
+ *                 default: bullets
+ *                 description: Summary format style
+ *               videoUrl:
+ *                 type: string
+ *                 description: Optional YouTube video URL for context
+ *     responses:
+ *       200:
+ *         description: Summary generated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 requestId:
+ *                   type: string
+ *                 summaries:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       provider:
+ *                         type: string
+ *                       success:
+ *                         type: boolean
+ *                       summary:
+ *                         type: string
+ *                       error:
+ *                         type: string
+ *       400:
+ *         description: Invalid input (missing transcript, invalid provider)
+ *       429:
+ *         description: Rate limit exceeded
+ */
 export async function POST(request: NextRequest) {
   const requestId = generateRequestId()
   try {

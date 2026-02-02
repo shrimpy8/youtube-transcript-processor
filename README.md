@@ -1,6 +1,6 @@
 # YouTube Podcast Transcript Processor
 
-A Next.js application for extracting, processing, and exporting YouTube podcast transcripts with advanced features including speaker detection, deduplication, and TXT export format.
+A Next.js application for extracting, processing, and exporting YouTube podcast transcripts with advanced features including speaker detection, deduplication, and TXT/PDF export.
 
 ## 📸 Screenshots
 
@@ -81,7 +81,7 @@ The application features a clean, modern interface with:
 - **Tabbed interface**: Video tab shows preview and transcript, Channel tab shows top 10 videos
 - **Real-time processing**: Visual feedback during transcript processing
 - **Search functionality**: Search within transcripts with highlighting
-- **Export options**: TXT format export with customizable options (metadata, timestamps)
+- **Export options**: TXT and PDF export with customizable options (metadata, timestamps)
 - **Dark mode**: Full dark mode support with system preference detection
 - **Responsive design**: Works seamlessly on mobile, tablet, and desktop
 - **Loading skeletons**: Smooth loading states for async content
@@ -170,7 +170,7 @@ This project uses [`next/font`](https://nextjs.org/docs/app/building-your-applic
 - ✅ YouTube URL validation and parsing (multiple formats)
 - ✅ Transcript processing with deduplication
 - ✅ Automatic speaker detection (Host/Guest)
-- ✅ TXT format export with customizable options
+- ✅ TXT and PDF export with customizable options
 - ✅ Single video transcript processing
 - ✅ Channel and playlist video browsing
 - ✅ Interactive transcript viewer with search
@@ -213,7 +213,6 @@ This project uses [`next/font`](https://nextjs.org/docs/app/building-your-applic
 
 ### 🚧 Future Enhancements
 
-- PDF export for AI summaries
 - Server-side persistence (Supabase migration)
 - Advanced speaker identification (ML-based)
 - Multi-language support
@@ -229,6 +228,7 @@ src/
 │   │   ├── channel/       # Channel information endpoint
 │   │   ├── discover/      # Video discovery endpoint
 │   │   └── ai-summary/    # AI summary + config endpoints
+│   ├── api-docs/          # Interactive Swagger/OpenAPI docs
 │   ├── layout.tsx         # Root layout with theme provider
 │   └── page.tsx           # Home page with main UI
 ├── components/            # React components
@@ -292,6 +292,7 @@ npm run test:e2e      # E2E tests
 
 ## 📚 Documentation
 
+- **[Interactive API Docs](http://localhost:3000/api-docs)** - Swagger/OpenAPI UI (available at `/api-docs` when running locally)
 - **[docs/SETUP.md](./docs/SETUP.md)** - Setup and installation guide
 - **[docs/API.md](./docs/API.md)** - API reference (endpoints, request/response schemas, rate limits)
 - **[docs/INFRASTRUCTURE.md](./docs/INFRASTRUCTURE.md)** - Architecture, tech stack, and infrastructure

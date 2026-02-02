@@ -16,6 +16,61 @@ const limiter = createRateLimiter(RATE_LIMIT_PRESETS.standard)
  * POST /api/channel
  * Gets channel information and videos from a video URL
  */
+/**
+ * @swagger
+ * /api/channel:
+ *   post:
+ *     summary: Get channel info from a video URL
+ *     description: Retrieves channel details and top 10 most-viewed videos from a YouTube video URL.
+ *     tags:
+ *       - Channel
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - videoUrl
+ *             properties:
+ *               videoUrl:
+ *                 type: string
+ *                 description: YouTube video URL
+ *     responses:
+ *       200:
+ *         description: Channel info and top videos returned
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 requestId:
+ *                   type: string
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     channel:
+ *                       type: object
+ *                       properties:
+ *                         id:
+ *                           type: string
+ *                         name:
+ *                           type: string
+ *                         url:
+ *                           type: string
+ *                         videoCount:
+ *                           type: integer
+ *                     videos:
+ *                       type: array
+ *                       items:
+ *                         $ref: '#/components/schemas/VideoMetadata'
+ *       400:
+ *         description: Invalid input
+ *       429:
+ *         description: Rate limit exceeded
+ */
 export async function POST(request: NextRequest) {
   const requestId = generateRequestId()
   try {
