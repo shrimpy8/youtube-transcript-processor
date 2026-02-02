@@ -1,0 +1,25 @@
+- **Non-technical PMs can build production apps** by graduating from **GPT projects** to **Bolt** or **Lovable** to **Cursor** with **Claude** as their confidence grows, starting with exposure therapy to code rather than diving straight into intimidating terminals. [00:05:16](https://www.youtube.com/watch?v=1em64iUFt3U&t=316s)
+
+- The 6-step AI dev workflow — create issue, explore, plan, execute, review, update docs — is driven entirely by reusable **slash commands** that inject prompts into **Claude Code** or **Cursor**. [00:06:25](https://www.youtube.com/watch?v=1em64iUFt3U&t=385s)
+
+- **Create Issue** slash command captures bugs or features mid-development and auto-generates **Linear** tickets via **MCP** (Model Context Protocol), so you can keep building without losing context. [00:08:46](https://www.youtube.com/watch?v=1em64iUFt3U&t=526s)
+
+- **Exploration Phase** forces the AI to deeply understand the problem and ask clarifying questions before writing any code, preventing eager coding agents from creating gnarly bugs in complex areas like payments or database migrations. [00:10:25](https://www.youtube.com/watch?v=1em64iUFt3U&t=625s)
+
+- **Create Plan** generates a markdown file with clear, minimal steps and status trackers, enabling you to split backend and frontend work across different models like **Gemini 3** for UI and **Claude** for architecture. [00:12:24](https://www.youtube.com/watch?v=1em64iUFt3U&t=744s)
+
+- Match AI models to tasks: **Claude** for planning and collaboration, **Codex** (GPT's model) for complex bug fixing, **Gemini 3** for UI design, and **Cursor Composer** for fast, simple implementations. [00:16:51](https://www.youtube.com/watch?v=1em64iUFt3U&t=1011s)
+
+- **Peer Review** slash command has **Claude** evaluate feedback from other models (**Codex**, **Composer**) and either explain why their concerns are invalid or fix the issues, creating a multi-model review process that catches bugs non-technical PMs can't spot. [00:18:31](https://www.youtube.com/watch?v=1em64iUFt3U&t=1111s)
+
+- **Learning Opportunity** slash command primes **Claude** to explain technical concepts using the 80/20 rule at a mid-level engineering knowledge baseline, turning every build into a learning session rather than blind execution. [00:12:04](https://www.youtube.com/watch?v=1em64iUFt3U&t=724s)
+
+- After shipping features, run post-mortems by asking **Claude** what in its system prompt or tooling caused mistakes, then update documentation so the same error never recurs — this compounds AI effectiveness over time. [00:19:11](https://www.youtube.com/watch?v=1em64iUFt3U&t=1151s)
+
+- Making codebases **AI-native** with plain-text markdown files explaining architecture and workflows allows non-technical PMs to ship contained UI projects via PR, though database migrations and complex backend work should still go to engineers. [00:21:00](https://www.youtube.com/watch?v=1em64iUFt3U&t=1260s)
+
+- AI doesn't weaken PM skills if used intentionally — it's like having a mentor always available who doesn't judge, and it lets junior PMs play at a higher level by thinking through strategy, marketing, and onboarding decisions they'd never touch in a traditional role. [00:22:06](https://www.youtube.com/watch?v=1em64iUFt3U&t=1326s)
+
+- For interview prep, create a **Claude project** as your coach, feed it frameworks from experts, mock with AI for instant feedback, and use **Comet** (Perplexity's browser) to analyze question banks and prioritize the most-asked interview questions. [00:24:00](https://www.youtube.com/watch?v=1em64iUFt3U&t=1440s)
+
+- Junior PMs have an unfair advantage today — when else in history could you graduate and build a bootstrapped startup solo, get thousands of reps across strategy/marketing/product, and deliver more value than people with 20 years of experience if you're curious, hardworking, and a good communicator. [00:26:45](https://www.youtube.com/watch?v=1em64iUFt3U&t=1605s)
