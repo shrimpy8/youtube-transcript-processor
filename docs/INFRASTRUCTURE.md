@@ -40,6 +40,9 @@ src/
 │       ├── ProcessingOptions
 │       ├── TranscriptViewer
 │       ├── AISummary
+│       ├── FavoriteChannels       # Saved podcast channels with episode browsing
+│       ├── SummarizePipelineModal # Step-by-step pipeline progress modal
+│       ├── ExportControls
 │       └── ...
 │
 ├── lib/
@@ -56,7 +59,11 @@ src/
 │   ├── useTranscriptProcessing
 │   ├── useProcessingOptions
 │   ├── useAISummary
-│   └── useUrlValidation
+│   ├── useUrlValidation
+│   ├── useFavoriteChannels       # Channel CRUD, episode fetching, localStorage
+│   ├── useUrlDetection           # Channel/playlist URL detection and resolution
+│   ├── useUrlSubmission          # URL validation, transcript fetching, video state
+│   └── useSummarizePipeline      # Pipeline orchestration (useReducer + refs)
 │
 └── types/
     └── index.ts                  # Shared type definitions
@@ -204,6 +211,41 @@ Prompt templates are stored as Markdown files in the `prompts/` directory:
 ### Fail-Open Configuration
 
 If the `/api/ai-summary/config` endpoint is unreachable, the client assumes all providers are configured and available. This prevents a config outage from disabling the summarization feature entirely.
+
+---
+
+## Favorite Channels & Summarize Pipeline
+
+### Overview
+
+Users can save up to 5 YouTube podcast channels and browse their latest episodes. A one-click "Summarize" button triggers an automated pipeline that fetches the transcript, processes it, and generates an AI summary.
+
+### State Architecture
+
+The main page (`page.tsx`) is a thin orchestrator with 0 `useState` calls. All state lives in 5 hooks:
+
+| Hook | State Management | Variables |
+|------|-----------------|-----------|
+| `useProcessingOptions` | `useState` | Processing config |
+| `useTranscriptProcessing` | `useState` | Transcript result, progress |
+| `useUrlDetection` | `useState` | Channel/playlist detection (7 vars) |
+| `useUrlSubmission` | `useState` | Video metadata, segments (7 vars) |
+| `useSummarizePipeline` | `useReducer` | Pipeline modal, steps, summaries |
+
+### Pipeline Steps
+
+The summarize pipeline uses `useReducer` for predictable state transitions:
+
+```
+INIT → SET_STEP(1) → SET_STEP(2) → ... → COMPLETE → CLOSE
+                                      └── FAIL → RETRY → INIT
+```
+
+On failure, a second failure triggers `CLOSE` with rollback to pre-pipeline state.
+
+### Storage
+
+All favorite channel data is persisted in `localStorage`. See [docs/features/FAVORITE_CHANNELS.md](./features/FAVORITE_CHANNELS.md) for details.
 
 ---
 

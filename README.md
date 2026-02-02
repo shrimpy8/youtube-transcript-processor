@@ -4,17 +4,17 @@ A Next.js application for extracting, processing, and exporting YouTube podcast 
 
 ## 📸 Screenshots
 
-### Main Interface
-![Main Interface](./screenshots/1_YouTube_Podcast_Transcript_Processor.png)
-*Main application interface with URL input and processing options*
+### AI-Powered Episode Summary
+![Episode AI Summary](./screenshots/1_Episode_AI_Summary.png)
+*Extract transcripts and generate AI summaries with bullet points and timestamp links*
 
-### AI Summary
-![AI Summary](./screenshots/2_YouTube_Podcast_AI_Summary.png)
-*AI-powered summary generation from multiple LLM providers*
+### Favorite Channels with One-Click Summarize
+![Favorite Channel Episode AI Summary](./screenshots/2_Favorite_Channel_Episode_AI_summary.png)
+*Save favorite podcast channels, browse episodes, and summarize with any LLM provider*
 
-### Transcript Viewer
-![Transcript Viewer](./screenshots/3_YouTube_Podcast_Transcript.png)
-*Interactive transcript viewer with search and export options*
+### Dark Mode
+![Dark Mode](./screenshots/3_Dark_Mode.png)
+*Full dark mode support with system preference detection*
 
 ## 🤖 AI Summary
 
@@ -173,6 +173,7 @@ This project uses [`next/font`](https://nextjs.org/docs/app/building-your-applic
 - ✅ Real-time processing options with persistence
 - ✅ Channel information display with top 10 videos
 - ✅ AI-powered transcript summaries (Anthropic, Google Gemini, Perplexity)
+- ✅ **My Favorite Podcast Channels** — Save up to 5 channels, browse latest episodes, one-click summarize pipeline
 
 ### ✅ Performance & Optimization
 
@@ -209,7 +210,7 @@ This project uses [`next/font`](https://nextjs.org/docs/app/building-your-applic
 ### 🚧 Future Enhancements
 
 - PDF export for AI summaries
-- Transcript history and local storage
+- Server-side persistence (Supabase migration)
 - Advanced speaker identification (ML-based)
 - Multi-language support
 - Browser extension
@@ -231,14 +232,16 @@ src/
 │   │   └── skeleton.tsx  # Loading skeleton component
 │   ├── layout/           # Layout components (Header, Footer, Container)
 │   ├── features/         # Feature-specific components
-│   │   ├── VideoPreview.tsx      # Video metadata and tabs
-│   │   ├── ChannelDetails.tsx    # Channel info and top videos
-│   │   ├── TranscriptViewer.tsx  # Transcript display with search
-│   │   ├── ProcessingOptions.tsx # Processing configuration
-│   │   ├── ExportControls.tsx    # Export functionality
-│   │   ├── ErrorDisplay.tsx      # Error display component
-│   │   ├── EmptyState.tsx        # Empty state components
-│   │   └── RetryButton.tsx      # Retry action component
+│   │   ├── VideoPreview.tsx           # Video metadata and tabs
+│   │   ├── ChannelDetails.tsx         # Channel info and top videos
+│   │   ├── TranscriptViewer.tsx       # Transcript display with search
+│   │   ├── ProcessingOptions.tsx      # Processing configuration
+│   │   ├── ExportControls.tsx         # Export functionality
+│   │   ├── FavoriteChannels.tsx       # Saved channels with episode list
+│   │   ├── SummarizePipelineModal.tsx # Pipeline progress modal
+│   │   ├── ErrorDisplay.tsx           # Error display component
+│   │   ├── EmptyState.tsx             # Empty state components
+│   │   └── RetryButton.tsx            # Retry action component
 │   └── ErrorBoundary.tsx # React error boundary
 ├── lib/                   # Utility functions
 │   ├── transcript-processor.ts  # Processing logic
@@ -253,10 +256,14 @@ src/
 │   ├── animations.ts            # Animation utilities
 │   └── utils.ts                # General utilities
 ├── hooks/                 # Custom React hooks
-│   ├── useChannelData.ts        # Channel data with caching
-│   ├── useTranscriptProcessing.ts # Transcript processing
-│   ├── useProcessingOptions.ts  # Options management
-│   └── useUrlValidation.ts      # URL validation
+│   ├── useChannelData.ts           # Channel data with caching
+│   ├── useTranscriptProcessing.ts  # Transcript processing
+│   ├── useProcessingOptions.ts     # Options management
+│   ├── useUrlValidation.ts         # URL validation
+│   ├── useFavoriteChannels.ts      # Channel CRUD, episode cache, localStorage
+│   ├── useUrlDetection.ts          # Channel/playlist URL detection
+│   ├── useUrlSubmission.ts         # URL validation and transcript fetching
+│   └── useSummarizePipeline.ts     # One-click summarize pipeline orchestration
 └── types/                 # TypeScript definitions
     └── index.ts          # Type definitions
 ```

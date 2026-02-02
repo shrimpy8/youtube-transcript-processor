@@ -106,6 +106,22 @@ Run with the Playwright UI:
 npm run test:e2e:ui
 ```
 
+#### Feature-Specific E2E Tests
+
+The following headed-browser tests cover the Favorite Channels and AI Summary features. They require the dev server to be running and API keys configured in `.env.local`.
+
+```bash
+# Full feature test: add channels, delete, pipeline summarize, Get Transcript + narrative
+# Includes a 5-minute wait between LLM calls to avoid rate limiting (~10 min total)
+npx playwright test tests/e2e/full-feature-test.spec.ts --headed --project=chromium
+
+# Quick narrative test: Get Transcript → Extract → Narrative AI Summary (all LLMs) → Download TXT
+# (~60 seconds)
+npx playwright test tests/e2e/get-transcript-narrative.spec.ts --headed --project=chromium
+```
+
+**Rate limiting note:** AI provider APIs may rate-limit repeated requests. Allow at least 5 minutes between test runs that trigger LLM calls.
+
 ## Building for Production
 
 Build the optimized production bundle:

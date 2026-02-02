@@ -15,6 +15,9 @@ import {
 } from '@/lib/favorite-channels-storage'
 import { fetchChannelEpisodes } from '@/lib/api-client'
 import { isValidYouTubeUrl, getUrlType } from '@/lib/youtube-validator'
+import { createLogger } from '@/lib/logger'
+
+const logger = createLogger('FavChannels')
 
 export type AddChannelResult =
   | { success: true; channel: FavoriteChannel }
@@ -84,9 +87,11 @@ export function useFavoriteChannels(): UseFavoriteChannelsReturn {
 
     // Check if any channel's cache is expired
     const anyExpired = channels.some((ch) => !isCacheValid(ch.id))
+    logger.debug('Auto-fetch check', { anyExpired, channelCount: channels.length })
     if (!anyExpired) return
 
     // Trigger auto-fetch
+    logger.debug('Auto-fetch triggered', { channels: channels.map(c => c.url) })
     fetchAllEpisodes(channels)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [channels.length > 0 && autoFetchEnabled && hasMounted.current])
@@ -102,15 +107,27 @@ export function useFavoriteChannels(): UseFavoriteChannelsReturn {
       setIsFetching(true)
       setFetchStatus('Checking latest episodes for all channels...')
 
-      const results = await Promise.allSettled(
-        channelList.map(async (ch) => {
-          if (!bypassCache && isCacheValid(ch.id)) {
-            return { channelId: ch.id, skipped: true }
-          }
+      // Fetch channels sequentially to avoid YouTube rate-limiting
+      // when multiple yt-dlp processes hit YouTube concurrently
+      const results: Array<
+        | { status: 'fulfilled'; value: { channelId: string; episodes?: FavoriteChannelEpisode[]; skipped: boolean } }
+        | { status: 'rejected'; reason: unknown }
+      > = []
 
+      for (const ch of channelList) {
+        if (!bypassCache && isCacheValid(ch.id)) {
+          logger.debug('Cache valid, skipping fetch', { url: ch.url })
+          results.push({ status: 'fulfilled', value: { channelId: ch.id, skipped: true } })
+          continue
+        }
+
+        try {
+          logger.debug('Fetching episodes', { url: ch.url, id: ch.id })
           const res = await fetchChannelEpisodes(ch.url, MAX_EPISODES_PER_CHANNEL)
+          logger.debug('Fetch response', { url: ch.url, success: res.success, error: res.error, episodeCount: res.data?.episodes?.length })
           if (!res.success || !res.data) {
-            throw new Error(res.error || 'Failed to fetch episodes')
+            results.push({ status: 'rejected', reason: new Error(res.error || 'Failed to fetch episodes') })
+            continue
           }
 
           const mapped: FavoriteChannelEpisode[] = res.data.episodes.map((ep) => ({
@@ -138,9 +155,11 @@ export function useFavoriteChannels(): UseFavoriteChannelsReturn {
             setChannels(updatedChannels)
           }
 
-          return { channelId: ch.id, episodes: mapped, skipped: false }
-        })
-      )
+          results.push({ status: 'fulfilled', value: { channelId: ch.id, episodes: mapped, skipped: false } })
+        } catch (error) {
+          results.push({ status: 'rejected', reason: error })
+        }
+      }
 
       // Process results
       const newEpisodes: Record<string, FavoriteChannelEpisode[]> = { ...episodes }
@@ -153,12 +172,13 @@ export function useFavoriteChannels(): UseFavoriteChannelsReturn {
         const ch = channelList[i]
         if (result.status === 'fulfilled') {
           const val = result.value
-          if (!val.skipped && 'episodes' in val) {
-            newEpisodes[val.channelId] = val.episodes!
+          if (!val.skipped && val.episodes) {
+            newEpisodes[val.channelId] = val.episodes
           }
           succeeded++
         } else {
           const errMsg = result.reason instanceof Error ? result.reason.message : 'Failed to fetch episodes'
+          logger.warn('Fetch failed', { url: ch.url, error: errMsg })
           newErrors[ch.id] = errMsg.includes('not found') || errMsg.includes('404')
             ? 'Channel not found or no longer available'
             : 'Unable to fetch episodes'
@@ -211,7 +231,9 @@ export function useFavoriteChannels(): UseFavoriteChannelsReturn {
       }
 
       // Fetch channel info
+      logger.debug('addChannel: fetching episodes', { url })
       const res = await fetchChannelEpisodes(url, MAX_EPISODES_PER_CHANNEL)
+      logger.debug('addChannel: response', { success: res.success, error: res.error, episodeCount: res.data?.episodes?.length })
       const channelName = res.success && res.data ? res.data.channel.name : null
 
       const newChannel: FavoriteChannel = {
