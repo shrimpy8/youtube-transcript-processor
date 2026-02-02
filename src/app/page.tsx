@@ -59,8 +59,32 @@ export default function Home() {
   }
 
   return (
-    <Container className="py-12">
-      <div className="flex flex-col gap-8 max-w-7xl mx-auto">
+    <Container className="py-8" maxWidth="full">
+      <div className="flex flex-col gap-8 max-w-7xl ml-auto mr-auto xl:ml-[10%] xl:mr-auto">
+        {/* Intro — left-aligned to match Processing Options panel */}
+        <div className="space-y-2">
+          <p className="text-muted-foreground">
+            Extract transcripts from any YouTube video, browse your favorite podcast channels,<br />
+            and generate AI-powered summaries with one click.
+          </p>
+          <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+            <span className="inline-flex items-center rounded-full bg-muted px-3 py-1 font-medium">1. Paste a URL</span>
+            <span>→</span>
+            <span className="inline-flex items-center rounded-full bg-muted px-3 py-1 font-medium">2. Extract Transcript</span>
+            <span>→</span>
+            <span className="inline-flex items-center rounded-full bg-muted px-3 py-1 font-medium">3. Get AI Summary</span>
+            <span className="mx-1">|</span>
+            <a
+              href="/how-it-works.html"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-primary hover:text-primary/80 transition-colors"
+            >
+              How It Works →
+            </a>
+          </div>
+        </div>
+
         {/* Two-Column Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Left Column - Inputs */}

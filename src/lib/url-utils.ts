@@ -24,15 +24,20 @@ export function normalizeChannelUrl(channelUrl: string): string {
   if (channelUrl.startsWith('http')) {
     return channelUrl
   }
-  
+
+  // Handle URLs starting with "www." or "youtube.com" (no protocol)
+  if (channelUrl.startsWith('www.') || channelUrl.startsWith('youtube.com')) {
+    return `https://${channelUrl}`
+  }
+
   if (channelUrl.startsWith('@')) {
     return `https://www.youtube.com/${channelUrl}`
   }
-  
+
   if (channelUrl.startsWith('UC') || channelUrl.startsWith('HC')) {
     return `https://www.youtube.com/channel/${channelUrl}`
   }
-  
+
   return `https://www.youtube.com/@${channelUrl}`
 }
 

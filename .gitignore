@@ -53,3 +53,4 @@ ai_summary/*.txt
 
 # Feature development artifacts (docs, screenshots, analysis)
 /features/
+docs/features/
