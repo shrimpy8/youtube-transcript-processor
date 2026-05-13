@@ -5,7 +5,8 @@ import {
   NoTranscriptError,
   VideoNotFoundError,
   NetworkError,
-  RateLimitError
+  RateLimitError,
+  ChannelNotFoundError,
 } from './errors'
 import { extractErrorMessage } from './utils'
 import { createLogger } from './logger'
@@ -71,6 +72,13 @@ export function createErrorResponse(
     )
   }
 
+  if (error instanceof ChannelNotFoundError) {
+    return NextResponse.json(
+      { ...base, error: 'Channel not found or is not accessible', type: error.type },
+      { status: error.statusCode }
+    )
+  }
+
   if (error instanceof AppError) {
     return NextResponse.json(
       { ...base, error: error.message, type: error.type },
@@ -99,7 +107,7 @@ export function createSuccessResponse<T>(
 ): NextResponse {
   const rid = requestId ? { requestId } : {}
   return NextResponse.json(
-    { success: true, ...rid, ...(typeof data === 'object' && data !== null ? data : { data }) },
+    { ...(typeof data === 'object' && data !== null ? data : { data }), success: true, ...rid },
     { status }
   )
 }

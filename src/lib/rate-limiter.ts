@@ -80,6 +80,7 @@ export function rateLimitResponse(): NextResponse {
     {
       success: false,
       error: 'Too many requests. Please wait about a minute before trying again.',
+      type: 'RATE_LIMIT',
     },
     { status: 429 }
   )

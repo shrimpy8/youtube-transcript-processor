@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getChannelVideos } from '@/lib/ytdlp-service'
 import { isValidYouTubeUrl, getUrlType, extractChannelId, extractChannelUsername } from '@/lib/youtube-validator'
-import { handleApiError, generateRequestId } from '@/lib/api-helpers'
+import { generateRequestId, createErrorResponse } from '@/lib/api-helpers'
+import { mapChannelError } from '@/lib/error-mapper'
 import { createRateLimiter, getClientIp, rateLimitResponse, RATE_LIMIT_PRESETS } from '@/lib/rate-limiter'
 import { normalizeAndEncodeChannelUrl } from '@/lib/url-utils'
 import { MAX_EPISODES_PER_CHANNEL, CHANNEL_FETCH_MULTIPLIER, CHANNEL_FETCH_MINIMUM } from '@/lib/constants'
@@ -93,6 +94,7 @@ const limiter = createRateLimiter(RATE_LIMIT_PRESETS.standard)
  */
 export async function POST(request: NextRequest) {
   const requestId = generateRequestId()
+  let channelUrl = ''
   try {
     const clientIp = getClientIp(request)
     if (!limiter.check(clientIp)) {
@@ -108,7 +110,8 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       )
     }
-    const { channelUrl, maxEpisodes } = body
+    const { channelUrl: rawChannelUrl, maxEpisodes } = body
+    channelUrl = typeof rawChannelUrl === 'string' ? rawChannelUrl : ''
 
     // Validate: channelUrl is required
     if (!channelUrl || typeof channelUrl !== 'string') {
@@ -193,17 +196,7 @@ export async function POST(request: NextRequest) {
     })
   } catch (error: unknown) {
     logger.error('Failed to fetch channel episodes', error, { requestId })
-
-    // Check for 404-like errors
-    const errMsg = error instanceof Error ? error.message : String(error)
-    if (errMsg.includes('404') || errMsg.includes('Not Found') || errMsg.includes('not found')) {
-      return NextResponse.json(
-        { success: false, requestId, error: 'Channel not found or is not accessible', type: 'CHANNEL_NOT_FOUND' },
-        { status: 404 }
-      )
-    }
-
-    return handleApiError(error, 'Failed to fetch channel data. Please try again.', requestId)
+    return createErrorResponse(mapChannelError(error, { channelUrl }), 'Failed to fetch channel data. Please try again.', requestId)
   }
 }
 
@@ -216,7 +209,7 @@ function extractNameFromUrl(url: string): string {
   if (username) return `@${username}`
   const channelId = extractChannelId(url)
   if (channelId) return channelId
-  return url
+  return 'Unknown Channel'
 }
 
 /**

@@ -126,6 +126,10 @@ export async function loadPromptTemplate(
 
     return trimmedContent
   } catch (error) {
+    if (error instanceof Error && error.message.includes('path traversal')) {
+      logger.error('Path traversal attempt detected in prompt template', error, { style, filename })
+      throw error
+    }
     logger.error('Failed to load prompt template, using fallback', error, {
       fallback: FALLBACK_PROMPT_FILE,
       style,
