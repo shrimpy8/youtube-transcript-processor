@@ -3,6 +3,9 @@
 import { useState, useEffect, useCallback } from 'react'
 import { ProcessingOptions } from '@/types'
 import { DEFAULT_PROCESSING_OPTIONS, STORAGE_KEYS } from '@/lib/constants'
+import { createLogger } from '@/lib/logger'
+
+const logger = createLogger('useProcessingOptions')
 
 const STORAGE_KEY = STORAGE_KEYS.PROCESSING_OPTIONS
 
@@ -22,7 +25,7 @@ export function useProcessingOptions() {
         setOptions({ ...DEFAULT_PROCESSING_OPTIONS, ...parsed })
       }
     } catch (error) {
-      console.error('Failed to load processing options:', error)
+      logger.warn('Failed to load processing options', { error: String(error) })
     } finally {
       setIsLoaded(true)
     }
@@ -34,7 +37,7 @@ export function useProcessingOptions() {
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(options))
       } catch (error) {
-        console.error('Failed to save processing options:', error)
+        logger.warn('Failed to save processing options', { error: String(error) })
       }
     }
   }, [options, isLoaded])

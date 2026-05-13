@@ -31,10 +31,20 @@ export const RATE_LIMIT_PRESETS = {
 export function createRateLimiter(config: RateLimiterConfig) {
   const map = new Map<string, { count: number; resetAt: number }>()
 
+  function evictExpired() {
+    const now = Date.now()
+    for (const [key, entry] of map) {
+      if (now > entry.resetAt) map.delete(key)
+    }
+  }
+
   return {
     check(ip: string): boolean {
       const now = Date.now()
       const entry = map.get(ip)
+
+      // Lazy eviction: prevent unbounded map growth under sustained traffic
+      if (map.size > 1000) evictExpired()
 
       if (!entry || now > entry.resetAt) {
         map.set(ip, { count: 1, resetAt: now + config.windowMs })

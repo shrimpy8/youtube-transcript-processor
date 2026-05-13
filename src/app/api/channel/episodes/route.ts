@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getChannelVideos } from '@/lib/ytdlp-service'
-import { isValidYouTubeUrl, getUrlType } from '@/lib/youtube-validator'
+import { isValidYouTubeUrl, getUrlType, extractChannelId, extractChannelUsername } from '@/lib/youtube-validator'
 import { handleApiError, generateRequestId } from '@/lib/api-helpers'
 import { createRateLimiter, getClientIp, rateLimitResponse, RATE_LIMIT_PRESETS } from '@/lib/rate-limiter'
 import { normalizeAndEncodeChannelUrl } from '@/lib/url-utils'
-import { MAX_EPISODES_PER_CHANNEL } from '@/lib/constants'
+import { MAX_EPISODES_PER_CHANNEL, CHANNEL_FETCH_MULTIPLIER, CHANNEL_FETCH_MINIMUM } from '@/lib/constants'
 import { createLogger } from '@/lib/logger'
 
 const logger = createLogger('api/channel/episodes')
@@ -99,7 +99,15 @@ export async function POST(request: NextRequest) {
       return rateLimitResponse()
     }
 
-    const body = await request.json()
+    let body: Record<string, unknown>
+    try {
+      body = await request.json()
+    } catch {
+      return NextResponse.json(
+        { success: false, error: 'Invalid JSON in request body', type: 'INVALID_INPUT' },
+        { status: 400 }
+      )
+    }
     const { channelUrl, maxEpisodes } = body
 
     // Validate: channelUrl is required
@@ -135,7 +143,7 @@ export async function POST(request: NextRequest) {
     // Fetch videos from channel — fetchViewCounts=false for speed,
     // we only need recency sort, not popularity.
     // Fetch more than needed so we can sort and pick the most recent.
-    const fetchCount = Math.max(limit * 3, 10)
+    const fetchCount = Math.max(limit * CHANNEL_FETCH_MULTIPLIER, CHANNEL_FETCH_MINIMUM)
     const videos = await getChannelVideos(channelUrl, fetchCount, false)
 
     // Sort by publishedAt descending
@@ -152,7 +160,8 @@ export async function POST(request: NextRequest) {
 
     // Extract channel name from first video's channelTitle, or from the URL
     const channelName = topEpisodes[0]?.channelTitle || extractNameFromUrl(channelUrl)
-    const channelId = extractChannelIdFromUrl(channelUrl)
+    // Falls back to sanitized URL slice if no identifier found (valid channel URLs always match)
+    const channelId = extractChannelIdFromUrl(channelUrl) ?? channelUrl.replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 64)
 
     const canonicalUrl = normalizeAndEncodeChannelUrl(channelUrl)
 
@@ -203,24 +212,17 @@ export async function POST(request: NextRequest) {
  * e.g. "https://youtube.com/@howiaipodcast" → "@howiaipodcast"
  */
 function extractNameFromUrl(url: string): string {
-  const handleMatch = url.match(/@([^/?#]+)/)
-  if (handleMatch) return `@${handleMatch[1]}`
-  const channelMatch = url.match(/\/channel\/([^/?#]+)/)
-  if (channelMatch) return channelMatch[1]
-  const cMatch = url.match(/\/c\/([^/?#]+)/)
-  if (cMatch) return cMatch[1]
+  const username = extractChannelUsername(url)
+  if (username) return `@${username}`
+  const channelId = extractChannelId(url)
+  if (channelId) return channelId
   return url
 }
 
 /**
  * Extracts a channel identifier from URL for use as an ID.
+ * Returns null if no identifier can be found (instead of the full URL).
  */
-function extractChannelIdFromUrl(url: string): string {
-  const channelMatch = url.match(/\/channel\/([^/?#]+)/)
-  if (channelMatch) return channelMatch[1]
-  const handleMatch = url.match(/@([^/?#]+)/)
-  if (handleMatch) return handleMatch[1]
-  const cMatch = url.match(/\/c\/([^/?#]+)/)
-  if (cMatch) return cMatch[1]
-  return url
+function extractChannelIdFromUrl(url: string): string | null {
+  return extractChannelId(url) || extractChannelUsername(url) || null
 }

@@ -151,3 +151,18 @@ export const MAX_FAVORITE_CHANNELS = 5
 export const MAX_EPISODES_PER_CHANNEL = 2
 export const EPISODE_CACHE_TTL_MS = 300_000 // 5 minutes
 
+/**
+ * LLM processing limits
+ */
+export const LLM_LIMITS = {
+  MAX_TRANSCRIPT_LENGTH: 500_000,
+  MIN_OUTPUT_LENGTH: 50,
+  MAX_PROMPT_TEMPLATE_SIZE: 50_000,
+} as const
+
+/**
+ * Channel fetch multiplier constants
+ */
+export const CHANNEL_FETCH_MULTIPLIER = 3
+export const CHANNEL_FETCH_MINIMUM = 10
+

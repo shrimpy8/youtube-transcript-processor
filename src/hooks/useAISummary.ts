@@ -16,12 +16,18 @@ export function useProviderConfig() {
 
   useEffect(() => {
     let cancelled = false
-    fetchProviderConfig().then(result => {
-      if (!cancelled) {
-        setProviders(result)
-        setIsConfigLoading(false)
-      }
-    })
+    fetchProviderConfig()
+      .then(result => {
+        if (!cancelled) {
+          setProviders(result)
+          setIsConfigLoading(false)
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setIsConfigLoading(false)
+        }
+      })
     return () => { cancelled = true }
   }, [])
 
@@ -211,6 +217,7 @@ export function useAISummary() {
           ...prev,
           loading: newLoading,
           errors: newErrors,
+          hasGenerated: true,
         }
       })
     }

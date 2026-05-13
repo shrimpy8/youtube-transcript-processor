@@ -79,8 +79,16 @@ export async function POST(request: NextRequest) {
       return rateLimitResponse()
     }
 
-    const body = await request.json()
-    const { videoUrl } = body
+    let body: Record<string, unknown>
+    try {
+      body = await request.json()
+    } catch {
+      return NextResponse.json(
+        { success: false, error: 'Invalid JSON in request body', type: 'INVALID_INPUT' },
+        { status: 400 }
+      )
+    }
+    const videoUrl = typeof body.videoUrl === 'string' ? body.videoUrl : undefined
 
     // Validate input
     if (!videoUrl) {

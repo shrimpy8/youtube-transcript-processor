@@ -96,7 +96,9 @@ export function isTranscriptUnavailableError(error: unknown): boolean {
     errorMessage.includes('no subtitle file found') ||
     errorMessage.includes('no transcript') ||
     errorMessage.includes('captions not available') ||
-    errorMessage.includes('subtitle not found')
+    errorMessage.includes('subtitle not found') ||
+    errorMessage.includes('transcript is disabled') ||
+    errorMessage.includes('transcript not available')
   )
 }
 

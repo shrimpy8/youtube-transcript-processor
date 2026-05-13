@@ -8,6 +8,7 @@ import {
 import { handleApiError, createSuccessResponse, generateRequestId } from '@/lib/api-helpers'
 import { createLogger } from '@/lib/logger'
 import { createRateLimiter, getClientIp, rateLimitResponse, RATE_LIMIT_PRESETS } from '@/lib/rate-limiter'
+import { LLM_LIMITS } from '@/lib/constants'
 
 /**
  * Logger instance for AI summary API route
@@ -98,8 +99,16 @@ export async function POST(request: NextRequest) {
     }
 
     logger.debug('Received AI summary request', { requestId })
-    
-    const body: AISummaryRequest = await request.json()
+
+    let body: AISummaryRequest
+    try {
+      body = await request.json()
+    } catch {
+      return NextResponse.json(
+        { success: false, error: 'Invalid JSON in request body', type: 'INVALID_INPUT' },
+        { status: 400 }
+      )
+    }
     const { transcript, provider, summaryStyle, videoUrl } = body
 
     // Default to 'bullets' for backward compatibility
@@ -143,16 +152,15 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate transcript length (prevent abuse)
-    const MAX_TRANSCRIPT_LENGTH = 500000
-    if (transcript.length > MAX_TRANSCRIPT_LENGTH) {
+    if (transcript.length > LLM_LIMITS.MAX_TRANSCRIPT_LENGTH) {
       logger.warn('Transcript too long', {
         length: transcript.length,
-        maxLength: MAX_TRANSCRIPT_LENGTH
+        maxLength: LLM_LIMITS.MAX_TRANSCRIPT_LENGTH
       })
       return NextResponse.json(
-        { 
+        {
           success: false,
-          error: `Transcript is too long. Maximum length is ${MAX_TRANSCRIPT_LENGTH.toLocaleString()} characters.` 
+          error: `Transcript is too long. Maximum length is ${LLM_LIMITS.MAX_TRANSCRIPT_LENGTH.toLocaleString()} characters.`
         },
         { status: 400 }
       )

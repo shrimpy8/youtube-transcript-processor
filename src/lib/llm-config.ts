@@ -60,7 +60,7 @@ export const PROVIDER_CONFIG: Record<LLMProviderKey, ProviderConfig> = {
     defaultModel: 'claude-sonnet-4-5-20250929',
     defaultModelName: 'Anthropic Sonnet 4.5',
     maxOutputTokens: 16384,
-    apiVersion: '2023-06-01',
+    apiVersion: process.env.ANTHROPIC_API_VERSION || '2023-06-01',
   },
   'google-gemini': {
     apiKeyEnv: 'GOOGLE_GEMINI_API_KEY',

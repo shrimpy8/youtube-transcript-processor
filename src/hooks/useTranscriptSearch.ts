@@ -91,11 +91,12 @@ export function useTranscriptSearch(
       return createElement(
         'span',
         null,
-        ...parts.map((part, i) =>
-          regex.test(part)
+        ...parts.map((part, i) => {
+          const isMatch = part.toLowerCase() === searchQuery.toLowerCase()
+          return isMatch
             ? createElement('mark', { key: i, className: 'bg-yellow-200 dark:bg-yellow-900' }, part)
             : part
-        )
+        })
       )
     },
     [query]

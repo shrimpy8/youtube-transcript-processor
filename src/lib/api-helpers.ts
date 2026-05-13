@@ -40,74 +40,47 @@ export function createErrorResponse(
 ): NextResponse {
   const rid = requestId ? { requestId } : {}
 
+  const base = { success: false, ...rid }
+
   // Handle known error types
   if (error instanceof NoTranscriptError) {
     return NextResponse.json(
-      {
-        ...rid,
-        error: error.message,
-        type: error.type,
-        suggestion: 'This video may not have captions enabled. Try another video.',
-      },
+      { ...base, error: error.message, type: error.type, suggestion: 'This video may not have captions enabled. Try another video.' },
       { status: error.statusCode }
     )
   }
 
   if (error instanceof VideoNotFoundError) {
     return NextResponse.json(
-      {
-        ...rid,
-        error: error.message,
-        type: error.type,
-      },
+      { ...base, error: error.message, type: error.type },
       { status: error.statusCode }
     )
   }
 
   if (error instanceof NetworkError) {
     return NextResponse.json(
-      {
-        ...rid,
-        error: error.message,
-        type: error.type,
-        suggestion: 'Please check your internet connection and try again.',
-      },
+      { ...base, error: error.message, type: error.type, suggestion: 'Please check your internet connection and try again.' },
       { status: error.statusCode }
     )
   }
 
   if (error instanceof RateLimitError) {
     return NextResponse.json(
-      {
-        ...rid,
-        error: error.message,
-        type: error.type,
-        suggestion: 'Please wait a moment and try again.',
-      },
+      { ...base, error: error.message, type: error.type, suggestion: 'Please wait a moment and try again.' },
       { status: error.statusCode }
     )
   }
 
   if (error instanceof AppError) {
     return NextResponse.json(
-      {
-        ...rid,
-        error: error.message,
-        type: error.type,
-      },
+      { ...base, error: error.message, type: error.type },
       { status: error.statusCode || 500 }
     )
   }
 
   // Unknown error
-  const message = extractErrorMessage(error, defaultMessage)
   return NextResponse.json(
-    {
-      ...rid,
-      error: defaultMessage,
-      type: ErrorType.UNKNOWN,
-      message,
-    },
+    { ...base, error: defaultMessage, type: ErrorType.UNKNOWN },
     { status: 500 }
   )
 }

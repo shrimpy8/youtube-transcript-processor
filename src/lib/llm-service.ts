@@ -1,5 +1,6 @@
 import { AISummaryResponse, SummaryStyle } from '@/types'
 import { createLogger } from './logger'
+import { LLM_LIMITS } from './constants'
 import * as fs from 'fs/promises'
 import * as path from 'path'
 import {
@@ -68,7 +69,7 @@ function validateLLMOutput(content: string, providerName: string): void {
   }
 
   // Check for suspiciously short output (likely an error or non-summary)
-  if (content.trim().length < 50) {
+  if (content.trim().length < LLM_LIMITS.MIN_OUTPUT_LENGTH) {
     logger.warn(`${providerName} returned suspiciously short output, will retry`, {
       contentLength: content.trim().length,
       contentPreview: content.substring(0, 200),
@@ -105,8 +106,8 @@ export async function loadPromptTemplate(
     const promptContent = await fs.readFile(promptPath, 'utf-8')
     let trimmedContent = promptContent.trim()
 
-    // Sanity check: prompt templates should be reasonable size (< 50KB)
-    if (trimmedContent.length > 50000) {
+    // Sanity check: prompt templates should be reasonable size
+    if (trimmedContent.length > LLM_LIMITS.MAX_PROMPT_TEMPLATE_SIZE) {
       logger.warn('Prompt template unusually large, possible tampering', { length: trimmedContent.length })
       throw new Error('Prompt template exceeds maximum expected size')
     }
@@ -221,7 +222,17 @@ interface ProviderAdapter {
   validateResponse?(content: string, promptTemplate: string): void
 }
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
+interface AnthropicResponse {
+  content?: Array<{ text?: string; type?: string }>
+}
+
+interface GeminiResponse {
+  candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>
+}
+
+interface PerplexityResponse {
+  choices?: Array<{ message?: { content?: string } }>
+}
 
 const anthropicAdapter: ProviderAdapter = {
   name: 'Anthropic',
@@ -245,8 +256,8 @@ const anthropicAdapter: ProviderAdapter = {
       temperature: LLM_DEFAULTS.temperature,
     }
   },
-  extractContent(data: any) {
-    return data.content?.[0]?.text
+  extractContent(data: Record<string, unknown>) {
+    return (data as AnthropicResponse).content?.[0]?.text
   },
   validateApiKey(apiKey) {
     if (!apiKey.startsWith('sk-ant-')) {
@@ -257,11 +268,14 @@ const anthropicAdapter: ProviderAdapter = {
 
 const geminiAdapter: ProviderAdapter = {
   name: 'Gemini',
-  buildUrl(model, apiKey) {
-    return `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`
+  buildUrl(model) {
+    return `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`
   },
-  buildHeaders() {
-    return { 'Content-Type': 'application/json' }
+  buildHeaders(apiKey) {
+    return {
+      'Content-Type': 'application/json',
+      'x-goog-api-key': apiKey,
+    }
   },
   async buildBody({ transcript, promptTemplate, config }) {
     const fullPrompt = buildFullPrompt(promptTemplate, transcript)
@@ -273,8 +287,8 @@ const geminiAdapter: ProviderAdapter = {
       },
     }
   },
-  extractContent(data: any) {
-    return data.candidates?.[0]?.content?.parts?.[0]?.text
+  extractContent(data: Record<string, unknown>) {
+    return (data as GeminiResponse).candidates?.[0]?.content?.parts?.[0]?.text
   },
 }
 
@@ -298,8 +312,8 @@ const perplexityAdapter: ProviderAdapter = {
       temperature: LLM_DEFAULTS.temperature,
     }
   },
-  extractContent(data: any) {
-    return data.choices?.[0]?.message?.content
+  extractContent(data: Record<string, unknown>) {
+    return (data as PerplexityResponse).choices?.[0]?.message?.content
   },
   validateResponse(content, promptTemplate) {
     const isTechnicalPrompt = promptTemplate.includes('### 1. Tools & Technologies')
@@ -317,8 +331,6 @@ const perplexityAdapter: ProviderAdapter = {
     }
   },
 }
-
-/* eslint-enable @typescript-eslint/no-explicit-any */
 
 /**
  * Provider adapter registry — maps provider key to its adapter
