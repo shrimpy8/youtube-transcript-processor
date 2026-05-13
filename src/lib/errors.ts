@@ -9,6 +9,7 @@ export enum ErrorType {
   PROCESSING_ERROR = 'PROCESSING_ERROR',
   NETWORK_ERROR = 'NETWORK_ERROR',
   RATE_LIMIT = 'RATE_LIMIT',
+  CHANNEL_NOT_FOUND = 'CHANNEL_NOT_FOUND',
   UNKNOWN = 'UNKNOWN',
 }
 
@@ -61,6 +62,19 @@ export class NetworkError extends AppError {
       ErrorType.NETWORK_ERROR,
       message,
       503
+    )
+  }
+}
+
+/**
+ * Channel not found error
+ */
+export class ChannelNotFoundError extends AppError {
+  constructor(channelUrl: string) {
+    super(
+      ErrorType.CHANNEL_NOT_FOUND,
+      `Channel not found or is not accessible: ${channelUrl}`,
+      404
     )
   }
 }

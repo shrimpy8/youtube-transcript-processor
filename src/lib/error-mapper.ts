@@ -1,10 +1,11 @@
-import { 
-  AppError, 
-  ErrorType, 
-  NoTranscriptError, 
-  VideoNotFoundError, 
-  NetworkError, 
-  RateLimitError 
+import {
+  AppError,
+  ErrorType,
+  NoTranscriptError,
+  VideoNotFoundError,
+  NetworkError,
+  RateLimitError,
+  ChannelNotFoundError,
 } from './errors'
 import { extractErrorMessage } from './utils'
 
@@ -100,6 +101,34 @@ export function isTranscriptUnavailableError(error: unknown): boolean {
     errorMessage.includes('transcript is disabled') ||
     errorMessage.includes('transcript not available')
   )
+}
+
+/**
+ * Maps channel fetch errors to typed application errors.
+ * Uses instanceof checks first; falls through to string matching only for yt-dlp output.
+ */
+export function mapChannelError(error: unknown, context?: { channelUrl?: string }): Error {
+  const channelUrl = context?.channelUrl || 'unknown'
+
+  if (error instanceof AppError) return error
+
+  if (isRateLimitError(error)) return new RateLimitError()
+  if (isNetworkError(error)) return new NetworkError(extractErrorMessage(error, 'Network error'))
+
+  // Use tighter channel-specific patterns to avoid false positives from unrelated "404" substrings
+  if (error instanceof Error) {
+    const msg = error.message.toLowerCase()
+    if (
+      msg.includes('channel not found') ||
+      msg.includes('user not found') ||
+      (msg.includes('not found') && (msg.includes('channel') || msg.includes('@'))) ||
+      msg === '404'
+    ) {
+      return new ChannelNotFoundError(channelUrl)
+    }
+  }
+
+  return new AppError(ErrorType.UNKNOWN, extractErrorMessage(error, 'An unexpected error occurred'))
 }
 
 /**
