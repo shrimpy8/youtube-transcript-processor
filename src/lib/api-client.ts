@@ -2,6 +2,9 @@ import { TranscriptSegment, ChannelInfo, ChannelDetails, VideoMetadata, LLMProvi
 import type { LLMProviderKey } from '@/lib/llm-config'
 import { AppError, ErrorType } from './errors'
 import { extractErrorMessage } from './utils'
+import { createLogger } from './logger'
+
+const logger = createLogger('api-client')
 
 /**
  * Request deduplication: Track in-flight requests by URL
@@ -10,7 +13,10 @@ import { extractErrorMessage } from './utils'
 const inFlightRequests = new Map<string, Promise<unknown>>()
 
 /**
- * Safely parse JSON from a Response, returning a clear error on HTML/invalid responses
+ * Safely parse JSON from a Response, returning a clear error on HTML/invalid responses.
+ * @param response - The fetch Response to parse
+ * @returns Parsed JSON value typed as T
+ * @throws AppError with UNKNOWN type if the body is not valid JSON (e.g. HTML 502 page)
  */
 async function safeJsonParse<T>(response: Response): Promise<T> {
   const text = await response.text()
@@ -393,7 +399,7 @@ export async function fetchProviderConfig(): Promise<Record<LLMProviderKey, bool
     }
   } catch (error) {
     // Fail-open: if config endpoint is unreachable, assume all configured
-    console.warn('[fetchProviderConfig] Config endpoint unreachable, assuming all providers configured:', error)
+    logger.warn('Config endpoint unreachable, assuming all providers configured', { error: String(error) })
   }
   return { anthropic: true, 'google-gemini': true, perplexity: true }
 }

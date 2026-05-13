@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { YoutubeTranscript } from 'youtube-transcript'
 import { validateAndParseUrl } from '@/lib/youtube-validator'
-import { NoTranscriptError, VideoNotFoundError, NetworkError, RateLimitError } from '@/lib/errors'
+import { NoTranscriptError } from '@/lib/errors'
+import { mapYtDlpError } from '@/lib/error-mapper'
 import { TranscriptSegment } from '@/types'
 import { createRateLimiter, getClientIp, rateLimitResponse, RATE_LIMIT_PRESETS } from '@/lib/rate-limiter'
 import { createLogger } from '@/lib/logger'
-import { generateRequestId } from '@/lib/api-helpers'
+import { generateRequestId, handleApiError } from '@/lib/api-helpers'
 
 const logger = createLogger('api/transcript')
 
@@ -76,8 +77,17 @@ export async function POST(request: NextRequest) {
       return rateLimitResponse()
     }
 
-    const body = await request.json()
-    const { url, videoId } = body
+    let body: Record<string, unknown>
+    try {
+      body = await request.json()
+    } catch {
+      return NextResponse.json(
+        { error: 'Invalid JSON in request body', type: 'INVALID_INPUT' },
+        { status: 400 }
+      )
+    }
+    const url = typeof body.url === 'string' ? body.url : undefined
+    const videoId = typeof body.videoId === 'string' ? body.videoId : undefined
 
     // Validate input
     if (!url && !videoId) {
@@ -89,7 +99,7 @@ export async function POST(request: NextRequest) {
 
     // Extract video ID
     let finalVideoId: string | null = null
-    
+
     if (videoId) {
       if (!/^[a-zA-Z0-9_-]{11}$/.test(videoId)) {
         return NextResponse.json(
@@ -126,13 +136,18 @@ export async function POST(request: NextRequest) {
         throw new NoTranscriptError(finalVideoId)
       }
       
+      // Compute average segment duration to use as fallback for the last segment
+      const avgDuration = transcriptData.length > 1
+        ? (transcriptData[transcriptData.length - 1].offset - transcriptData[0].offset) / (1000 * (transcriptData.length - 1))
+        : 5
+
       // Transform to our format
       const segments: TranscriptSegment[] = transcriptData.map((item, index) => ({
         text: item.text,
         start: item.offset / 1000, // Convert milliseconds to seconds
         duration: index < transcriptData.length - 1
           ? (transcriptData[index + 1].offset - item.offset) / 1000
-          : 0, // Last segment has 0 duration
+          : avgDuration,
       }))
 
       // Double-check segments are valid
@@ -152,82 +167,13 @@ export async function POST(request: NextRequest) {
         },
       })
     } catch (error: unknown) {
-      // Handle specific YouTube transcript errors
-      const errorMessage = error instanceof Error ? error.message : String(error)
-      
-      if (errorMessage.includes('Transcript is disabled') || 
-          errorMessage.includes('No transcript') ||
-          errorMessage.includes('transcript not available')) {
-        throw new NoTranscriptError(finalVideoId)
-      }
-      if (errorMessage.includes('Video unavailable')) {
-        throw new VideoNotFoundError(finalVideoId)
-      }
-      if (errorMessage.includes('rate limit') || errorMessage.includes('429')) {
-        throw new RateLimitError()
-      }
-      if (errorMessage.includes('network') || errorMessage.includes('fetch')) {
-        throw new NetworkError(errorMessage)
-      }
-      
-      // Re-throw as generic error
-      throw error
+      // Pass through typed errors already thrown above (e.g. NoTranscriptError on empty result)
+      if (error instanceof NoTranscriptError) throw error
+      // Classify all other errors via the shared mapper (single source of truth)
+      throw mapYtDlpError(error, { videoId: finalVideoId! })
     }
   } catch (error: unknown) {
-    // Handle known errors
-    if (error instanceof NoTranscriptError) {
-      return NextResponse.json(
-        { 
-          error: error.message,
-          type: error.type,
-          suggestion: 'This video may not have captions enabled. Try another video.',
-        },
-        { status: error.statusCode }
-      )
-    }
-    
-    if (error instanceof VideoNotFoundError) {
-      return NextResponse.json(
-        { 
-          error: error.message,
-          type: error.type,
-        },
-        { status: error.statusCode }
-      )
-    }
-    
-    if (error instanceof NetworkError) {
-      return NextResponse.json(
-        { 
-          error: error.message,
-          type: error.type,
-          suggestion: 'Please check your internet connection and try again.',
-        },
-        { status: error.statusCode }
-      )
-    }
-    
-    if (error instanceof RateLimitError) {
-      return NextResponse.json(
-        { 
-          error: error.message,
-          type: error.type,
-          suggestion: 'Please wait a moment and try again.',
-        },
-        { status: error.statusCode }
-      )
-    }
-
-    // Unknown error — log details server-side, return generic message to client
-    logger.error('Transcript fetch error', error, { requestId })
-    return NextResponse.json(
-      {
-        requestId,
-        error: 'Failed to fetch transcript',
-        type: 'UNKNOWN',
-      },
-      { status: 500 }
-    )
+    return handleApiError(error, 'Failed to fetch transcript', requestId)
   }
 }
 

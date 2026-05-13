@@ -1,5 +1,6 @@
 import YTDlpWrap from 'yt-dlp-wrap'
 import { createLogger } from './logger'
+import { extractVideoId } from './youtube-validator'
 
 /**
  * Shared yt-dlp infrastructure: singleton instance, types, and helpers.
@@ -82,32 +83,12 @@ export function extractOutputString(output: YtDlpOutput): string {
   return String(output)
 }
 
+// Re-export from youtube-validator as the single source of truth for video ID extraction
+export { extractVideoId as extractVideoIdFromUrl } from './youtube-validator'
+
 /**
  * Extract video ID from a URL, returning 'unknown' if not found
  */
 export function extractVideoIdOrUnknown(url: string): string {
-  return extractVideoIdFromUrl(url) || url.match(/(?:v=|\/)([a-zA-Z0-9_-]{11})/)?.[1] || 'unknown'
-}
-
-/**
- * Extracts video ID from YouTube URL
- * @param url - YouTube URL
- * @returns Video ID or null
- */
-export function extractVideoIdFromUrl(url: string): string | null {
-  // Pattern 1: Standard YouTube URLs (youtube.com/watch?v=, youtu.be/, embed/)
-  const standardPattern = /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/
-  const standardMatch = url.match(standardPattern)
-  if (standardMatch && standardMatch[1]) {
-    return standardMatch[1]
-  }
-
-  // Pattern 2: URLs with additional parameters (watch?feature=share&v=)
-  const paramPattern = /youtube\.com\/watch\?.*[&?]v=([a-zA-Z0-9_-]{11})/
-  const paramMatch = url.match(paramPattern)
-  if (paramMatch && paramMatch[1]) {
-    return paramMatch[1]
-  }
-
-  return null
+  return extractVideoId(url) || url.match(/(?:v=|\/)([a-zA-Z0-9_-]{11})/)?.[1] || 'unknown'
 }

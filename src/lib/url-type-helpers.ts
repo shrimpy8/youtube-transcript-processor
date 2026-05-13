@@ -1,4 +1,7 @@
 import { discoverVideos } from './api-client'
+import { createLogger } from './logger'
+
+const logger = createLogger('url-type-helpers')
 
 /**
  * Helper functions for handling different URL types (channel, playlist, video)
@@ -17,7 +20,7 @@ export async function fetchChannelName(url: string): Promise<string> {
     }
     return 'Channel'
   } catch (error) {
-    console.error('Failed to fetch channel info:', error)
+    logger.warn('Failed to fetch channel info', { error: String(error) })
     return 'Channel'
   }
 }
@@ -35,7 +38,7 @@ export async function fetchPlaylistName(url: string): Promise<string> {
     }
     return 'Playlist'
   } catch (error) {
-    console.error('Failed to fetch playlist info:', error)
+    logger.warn('Failed to fetch playlist info', { error: String(error) })
     return 'Playlist'
   }
 }

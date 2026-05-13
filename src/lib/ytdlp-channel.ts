@@ -93,9 +93,12 @@ export async function getChannelInfoFromVideo(videoUrl: string): Promise<{
     } else {
       if (channelName) {
         const sanitized = channelName.toLowerCase().replace(/[^a-z0-9]/g, '')
-        channelUrl = `https://www.youtube.com/@${sanitized}`
-        urlSource = 'channelName (sanitized)'
-      } else {
+        if (sanitized.length > 0) {
+          channelUrl = `https://www.youtube.com/@${sanitized}`
+          urlSource = 'channelName (sanitized)'
+        }
+      }
+      if (!channelUrl) {
         logger.error('Could not determine channel URL from video', undefined, {
           videoUrl,
           info: {

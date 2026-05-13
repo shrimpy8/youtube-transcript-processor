@@ -2,6 +2,9 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { extractErrorMessage } from '@/lib/utils'
+import { createLogger } from '@/lib/logger'
+
+const logger = createLogger('useCachedData')
 
 /**
  * Generic hook for fetching and caching data
@@ -70,7 +73,7 @@ export function useCachedData<TData, TCache extends {
       const errorMessage = extractErrorMessage(err, defaultErrorMessage)
       setError(errorMessage)
       setData(null)
-      console.error('Data fetch error:', err)
+      logger.warn('Data fetch error', { error: String(err) })
     } finally {
       setIsLoading(false)
     }

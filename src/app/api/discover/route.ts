@@ -80,8 +80,18 @@ export async function POST(request: NextRequest) {
       return rateLimitResponse()
     }
 
-    const body = await request.json()
-    const { url, type, maxVideos = 100 } = body
+    let body: Record<string, unknown>
+    try {
+      body = await request.json()
+    } catch {
+      return NextResponse.json(
+        { success: false, error: 'Invalid JSON in request body', type: 'INVALID_INPUT' },
+        { status: 400 }
+      )
+    }
+    const url = typeof body.url === 'string' ? body.url : undefined
+    const type = typeof body.type === 'string' ? body.type : undefined
+    const maxVideos = typeof body.maxVideos === 'number' ? body.maxVideos : 100
 
     // Validate input
     if (!url) {

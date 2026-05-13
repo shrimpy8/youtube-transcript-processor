@@ -39,6 +39,24 @@ export interface UseFavoriteChannelsReturn {
 }
 
 /**
+ * Maps raw episode data to FavoriteChannelEpisode, attaching channelId.
+ * Single source of truth — all three fetch paths use this.
+ */
+function mapEpisodes(channelId: string, episodes: Array<{
+  videoId: string; title: string; publishedAt: string; url: string; thumbnail: string | null; duration: number | null
+}>): FavoriteChannelEpisode[] {
+  return episodes.map((ep) => ({
+    channelId,
+    videoId: ep.videoId,
+    title: ep.title,
+    publishedAt: ep.publishedAt,
+    url: ep.url,
+    thumbnail: ep.thumbnail,
+    duration: ep.duration,
+  }))
+}
+
+/**
  * Normalizes a YouTube channel URL for duplicate comparison.
  * Strips protocol, www, trailing slashes, lowercases.
  */
@@ -130,15 +148,7 @@ export function useFavoriteChannels(): UseFavoriteChannelsReturn {
             continue
           }
 
-          const mapped: FavoriteChannelEpisode[] = res.data.episodes.map((ep) => ({
-            channelId: ch.id,
-            videoId: ep.videoId,
-            title: ep.title,
-            publishedAt: ep.publishedAt,
-            url: ep.url,
-            thumbnail: ep.thumbnail,
-            duration: ep.duration,
-          }))
+          const mapped = mapEpisodes(ch.id, res.data.episodes)
 
           // Update cache
           updateChannelCache(ch.id, {
@@ -254,15 +264,7 @@ export function useFavoriteChannels(): UseFavoriteChannelsReturn {
 
       // Cache episodes if we got them
       if (res.success && res.data) {
-        const mapped: FavoriteChannelEpisode[] = res.data.episodes.map((ep) => ({
-          channelId: newChannel.id,
-          videoId: ep.videoId,
-          title: ep.title,
-          publishedAt: ep.publishedAt,
-          url: ep.url,
-          thumbnail: ep.thumbnail,
-          duration: ep.duration,
-        }))
+        const mapped = mapEpisodes(newChannel.id, res.data.episodes)
         updateChannelCache(newChannel.id, {
           episodes: mapped,
           fetchedAt: new Date().toISOString(),
@@ -318,15 +320,7 @@ export function useFavoriteChannels(): UseFavoriteChannelsReturn {
       setChannels(updated)
 
       if (res.success && res.data) {
-        const mapped: FavoriteChannelEpisode[] = res.data.episodes.map((ep) => ({
-          channelId: id,
-          videoId: ep.videoId,
-          title: ep.title,
-          publishedAt: ep.publishedAt,
-          url: ep.url,
-          thumbnail: ep.thumbnail,
-          duration: ep.duration,
-        }))
+        const mapped = mapEpisodes(id, res.data.episodes)
         updateChannelCache(id, {
           episodes: mapped,
           fetchedAt: new Date().toISOString(),

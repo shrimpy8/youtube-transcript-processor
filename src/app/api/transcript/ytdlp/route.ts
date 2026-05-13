@@ -97,8 +97,18 @@ export async function POST(request: NextRequest) {
       return rateLimitResponse()
     }
 
-    const body = await request.json()
-    const { url, videoId, options } = body
+    let body: Record<string, unknown>
+    try {
+      body = await request.json()
+    } catch {
+      return NextResponse.json(
+        { error: 'Invalid JSON in request body', type: 'INVALID_INPUT' },
+        { status: 400 }
+      )
+    }
+    const url = typeof body.url === 'string' ? body.url : undefined
+    const videoId = typeof body.videoId === 'string' ? body.videoId : undefined
+    const options = body.options && typeof body.options === 'object' ? body.options as Record<string, unknown> : undefined
 
     // Validate input
     if (!url && !videoId) {
@@ -141,9 +151,10 @@ export async function POST(request: NextRequest) {
     const extractedVideoId = extractVideoIdFromUrl(finalUrl) || videoId || 'unknown'
 
     // Validate options before passing to yt-dlp
-    const ALLOWED_FORMATS = ['srt', 'vtt', 'ass', 'best']
-    const language = options?.language || 'en'
-    const format = options?.format || 'srt'
+    const ALLOWED_FORMATS = ['srt', 'vtt', 'ass', 'best'] as const
+    type SubtitleFormat = typeof ALLOWED_FORMATS[number]
+    const language = typeof options?.language === 'string' ? options.language : 'en'
+    const rawFormat = typeof options?.format === 'string' ? options.format : 'srt'
 
     if (!/^[a-z]{2}(-[a-zA-Z]{2,8})?$/.test(language)) {
       return NextResponse.json(
@@ -151,12 +162,13 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       )
     }
-    if (!ALLOWED_FORMATS.includes(format)) {
+    if (!(ALLOWED_FORMATS as readonly string[]).includes(rawFormat)) {
       return NextResponse.json(
         { error: `Invalid subtitle format. Allowed: ${ALLOWED_FORMATS.join(', ')}` },
         { status: 400 }
       )
     }
+    const format = rawFormat as SubtitleFormat
 
     // Fetch transcript and video info in parallel
     try {
@@ -164,7 +176,7 @@ export async function POST(request: NextRequest) {
         downloadSubtitles(finalUrl, {
           language,
           format,
-          writeAutoSubs: options?.writeAutoSubs !== false,
+          writeAutoSubs: options?.writeAutoSubs !== false && options?.writeAutoSubs !== 'false',
         }),
         getVideoInfo(finalUrl).catch((error) => {
           // If video info fetch fails, log but don't fail the whole request
