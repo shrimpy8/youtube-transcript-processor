@@ -3,11 +3,13 @@ import { normalizeVideoUrl } from './url-utils'
 import { mapYtDlpError } from './error-mapper'
 import { createTimer } from './utils'
 import { formatUploadDate } from './date-utils'
+import { redactVideoUrl } from './logger'
 import {
   ytdlpLogger as logger,
   getYtDlpInstance,
   extractOutputString,
   extractVideoIdOrUnknown,
+  ytdlpExec,
   YTDLP_JSON_ARGS,
   type YtDlpOutput,
   type YtDlpVideoInfo,
@@ -22,18 +24,18 @@ import {
 export async function getVideoInfo(videoUrl: string): Promise<YtDlpVideoInfo> {
   const timer = createTimer()
   timer.start()
-  logger.info('Getting video info', { videoUrl })
+  logger.info('Getting video info', { videoUrl: redactVideoUrl(videoUrl) })
 
   const ytDlp = getYtDlpInstance()
   const fullUrl = normalizeVideoUrl(videoUrl)
-  logger.debug('Normalized video URL', { original: videoUrl, normalized: fullUrl })
+  logger.debug('Normalized video URL', { original: redactVideoUrl(videoUrl), normalized: redactVideoUrl(fullUrl) })
 
   try {
     const args = [fullUrl, ...YTDLP_JSON_ARGS]
     logger.debug('yt-dlp command args', { args })
 
     logger.info('Executing yt-dlp command for video info')
-    const output = await ytDlp.execPromise(args)
+    const output = await ytdlpExec(signal => ytDlp.execPromise(args, {}, signal), `video info: ${fullUrl}`)
     const outputStr = extractOutputString(output as YtDlpOutput)
 
     logger.debug('Parsing yt-dlp JSON output', { outputLength: outputStr.length })
@@ -68,8 +70,8 @@ export async function getVideoInfo(videoUrl: string): Promise<YtDlpVideoInfo> {
     return videoInfo
   } catch (error) {
     logger.error('Failed to get video info', error, {
-      videoUrl,
-      fullUrl,
+      videoUrl: redactVideoUrl(videoUrl),
+      fullUrl: redactVideoUrl(fullUrl),
       duration: timer.elapsedMs(),
     })
     const videoId = extractVideoIdOrUnknown(fullUrl)
@@ -89,7 +91,7 @@ export async function fetchVideoMetadata(videoUrl: string): Promise<{ viewCount?
 
     const args = [fullUrl, ...YTDLP_JSON_ARGS]
 
-    const output = await ytDlp.execPromise(args)
+    const output = await ytdlpExec(signal => ytDlp.execPromise(args, {}, signal), `video metadata: ${fullUrl}`)
     const outputStr = extractOutputString(output as YtDlpOutput)
     const info: YtDlpJsonInfo = JSON.parse(outputStr.trim())
 

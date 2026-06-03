@@ -120,8 +120,14 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Validate maxVideos
-    const maxVideosNum = Math.min(Math.max(1, parseInt(String(maxVideos)) || 100), 500)
+    // Validate maxVideos.
+    // Cap at 50 for unauthenticated requests — each video can trigger additional
+    // yt-dlp metadata calls, so a limit of 500 would amplify external work 10x.
+    const MAX_VIDEOS_UNAUTHENTICATED = 50
+    const maxVideosNum = Math.min(
+      Math.max(1, parseInt(String(maxVideos)) || 20),
+      MAX_VIDEOS_UNAUTHENTICATED
+    )
 
     try {
       let videos: VideoMetadata[] = []

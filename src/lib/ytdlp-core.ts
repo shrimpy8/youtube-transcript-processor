@@ -1,10 +1,106 @@
 import YTDlpWrap from 'yt-dlp-wrap'
-import { createLogger } from './logger'
+import { createLogger, redactVideoUrl } from './logger'
 import { extractVideoId } from './youtube-validator'
 
 /**
  * Shared yt-dlp infrastructure: singleton instance, types, and helpers.
  */
+
+// ---------------------------------------------------------------------------
+// Timeout + concurrency helpers
+// ---------------------------------------------------------------------------
+
+/** Maximum milliseconds to wait for a single yt-dlp subprocess to complete. */
+const YTDLP_TIMEOUT_MS = 30_000
+
+/**
+ * Races a promise against a wall-clock timeout.
+ * Rejects with a descriptive Error if the timeout fires first.
+ *
+ * @param promise   - The promise to race (already running)
+ * @param timeoutMs - Milliseconds before the timeout fires
+ * @param label     - Short description for the timeout error message
+ * @param onTimeout - Optional callback invoked when the timeout fires (e.g. to abort the child process)
+ */
+export async function execWithTimeout<T>(
+  promise: Promise<T>,
+  timeoutMs: number,
+  label: string,
+  onTimeout?: () => void
+): Promise<T> {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined
+  const timeout = new Promise<never>((_, reject) => {
+    timeoutId = setTimeout(() => {
+      onTimeout?.()
+      reject(new Error(`yt-dlp timeout after ${timeoutMs}ms: ${label}`))
+    }, timeoutMs)
+  })
+  try {
+    const result = await Promise.race([promise, timeout])
+    clearTimeout(timeoutId)
+    return result
+  } catch (err) {
+    clearTimeout(timeoutId)
+    throw err
+  }
+}
+
+/** Current number of in-flight yt-dlp subprocess calls. */
+let activeYtdlpCalls = 0
+/** Maximum concurrent yt-dlp subprocesses allowed across all routes. */
+const MAX_CONCURRENT_YTDLP = 3
+
+/**
+ * Waits until a yt-dlp concurrency slot is available, then claims it.
+ * Polls every 200 ms — intended only for short waits before subprocess launch.
+ */
+export async function acquireYtdlpSlot(): Promise<void> {
+  while (activeYtdlpCalls >= MAX_CONCURRENT_YTDLP) {
+    await new Promise<void>(resolve => setTimeout(resolve, 200))
+  }
+  activeYtdlpCalls++
+}
+
+/** Releases a previously acquired yt-dlp concurrency slot. */
+export function releaseYtdlpSlot(): void {
+  activeYtdlpCalls = Math.max(0, activeYtdlpCalls - 1)
+}
+
+/**
+ * Convenience wrapper: acquires a concurrency slot FIRST, then starts the
+ * yt-dlp subprocess via the provided thunk, enforces a 30-second timeout,
+ * and releases the slot unconditionally.
+ *
+ * The thunk receives an AbortSignal that is wired directly to yt-dlp-wrap's
+ * `bindAbortSignal` mechanism. When the timeout fires, `controller.abort()`
+ * is called, which causes yt-dlp-wrap to send SIGTERM (and SIGKILL via
+ * `pgrep -P … | xargs kill` on Unix) to the yt-dlp child process tree before
+ * rejecting the promise. This fully resolves the background-zombie problem
+ * that existed when using a bare `Promise.race()`.
+ *
+ * Usage — callers must forward the signal to execPromise:
+ *   ytdlpExec(signal => ytDlp.execPromise(args, {}, signal), 'label')
+ *
+ * @param thunk - Factory that accepts an AbortSignal and returns the execPromise.
+ *                The signal MUST be passed as the third argument to execPromise
+ *                so yt-dlp-wrap can kill the child process on abort.
+ * @param label - Short description for timeout error messages (URLs are redacted)
+ */
+export async function ytdlpExec<T>(thunk: (signal: AbortSignal) => Promise<T>, label: string): Promise<T> {
+  const safeLabel = redactVideoUrl(label)
+  const controller = new AbortController()
+  await acquireYtdlpSlot()
+  try {
+    return await execWithTimeout(
+      thunk(controller.signal),
+      YTDLP_TIMEOUT_MS,
+      safeLabel,
+      () => controller.abort()
+    )
+  } finally {
+    releaseYtdlpSlot()
+  }
+}
 
 // Singleton yt-dlp-wrap instance (auto-downloads binary on first use)
 let ytDlpWrapInstance: YTDlpWrap | null = null

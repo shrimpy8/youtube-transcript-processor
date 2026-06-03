@@ -18,6 +18,89 @@ const logger = createLogger('ai-summary-api')
 const limiter = createRateLimiter(RATE_LIMIT_PRESETS.standard)
 
 /**
+ * Stricter rate limiter for provider=all requests to prevent cost amplification.
+ * 2 requests per minute per IP — each request fans out to all configured providers.
+ */
+const allProviderLimiter = createRateLimiter({ maxRequests: 2, windowMs: 60_000 })
+
+/**
+ * Validates the Authorization: Bearer token when SUMMARY_API_TOKEN is configured.
+ *
+ * NOTE: Token enforcement is opt-in — when SUMMARY_API_TOKEN is not set, any caller
+ * without an Origin header (e.g. curl, server scripts) is allowed through. This is
+ * acceptable for a local-only deployment but should be revisited before exposing
+ * the endpoint to a shared or public network.
+ *
+ * @returns A 401 Response if authentication fails, otherwise null
+ */
+function assertBearerToken(request: Request): NextResponse | null {
+  const requiredToken = process.env.SUMMARY_API_TOKEN
+  if (!requiredToken) return null // Token enforcement is opt-in (see note above)
+
+  const authHeader = request.headers.get('authorization')
+  const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null
+  if (!token || token !== requiredToken) {
+    return NextResponse.json(
+      { success: false, error: 'Unauthorized', type: 'UNAUTHORIZED' },
+      { status: 401 }
+    )
+  }
+  return null
+}
+
+/**
+ * Validates that the request originates from the same host (CSRF guard).
+ *
+ * Rules:
+ * - If Origin IS present → must match the host, otherwise 403.
+ * - If Origin is ABSENT → the request did not come from a browser. Non-browser
+ *   clients (curl, scripts) are only allowed when SUMMARY_API_TOKEN is configured
+ *   AND the request carries a valid Authorization: Bearer token. Without a token
+ *   env var configured the endpoint is local-only, so absent-Origin is allowed
+ *   (opt-in security model — see assertBearerToken for the same caveat).
+ *
+ * @returns A 403 Response if the origin check fails, otherwise null
+ */
+function assertSameOrigin(request: Request): NextResponse | null {
+  const origin = request.headers.get('origin')
+  const host = request.headers.get('host')
+
+  if (origin) {
+    // Browser request — verify it comes from the same host
+    try {
+      if (new URL(origin).host !== host) {
+        return NextResponse.json(
+          { success: false, error: 'Cross-origin requests not allowed', type: 'FORBIDDEN' },
+          { status: 403 }
+        )
+      }
+    } catch {
+      return NextResponse.json(
+        { success: false, error: 'Invalid origin header', type: 'FORBIDDEN' },
+        { status: 403 }
+      )
+    }
+    return null
+  }
+
+  // No Origin header — non-browser client (curl, scripts, server-to-server).
+  // Require a valid Bearer token when SUMMARY_API_TOKEN is configured.
+  const requiredToken = process.env.SUMMARY_API_TOKEN
+  if (requiredToken) {
+    const authHeader = request.headers.get('authorization')
+    const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null
+    if (!token || token !== requiredToken) {
+      return NextResponse.json(
+        { success: false, error: 'Missing Origin header; provide a valid Authorization: Bearer token', type: 'FORBIDDEN' },
+        { status: 403 }
+      )
+    }
+  }
+  // SUMMARY_API_TOKEN not set → opt-in mode, allow through (local-only deployment)
+  return null
+}
+
+/**
  * POST /api/ai-summary
  * Generates AI summary from transcript using selected LLM provider(s)
  *
@@ -91,6 +174,20 @@ const limiter = createRateLimiter(RATE_LIMIT_PRESETS.standard)
 export async function POST(request: NextRequest) {
   const requestId = generateRequestId()
   try {
+    // CSRF guard — reject cross-origin browser requests
+    const csrfError = assertSameOrigin(request)
+    if (csrfError) {
+      logger.warn('CSRF check failed', { requestId })
+      return csrfError
+    }
+
+    // Bearer token check — enforced when SUMMARY_API_TOKEN env var is set
+    const authError = assertBearerToken(request)
+    if (authError) {
+      logger.warn('Authentication failed', { requestId })
+      return authError
+    }
+
     // Rate limit by client IP
     const clientIp = getClientIp(request)
     if (!limiter.check(clientIp)) {
@@ -143,12 +240,18 @@ export async function POST(request: NextRequest) {
     if (!provider || !['anthropic', 'google-gemini', 'perplexity', 'all'].includes(provider)) {
       logger.warn('Invalid provider in request', { provider })
       return NextResponse.json(
-        { 
+        {
           success: false,
-          error: 'Valid provider is required. Must be one of: anthropic, google-gemini, perplexity, all' 
+          error: 'Valid provider is required. Must be one of: anthropic, google-gemini, perplexity, all'
         },
         { status: 400 }
       )
+    }
+
+    // Stricter rate limit for provider=all to prevent cost amplification across paid LLM providers
+    if (provider === 'all' && !allProviderLimiter.check(clientIp)) {
+      logger.warn('provider=all rate limit exceeded', { requestId, clientIp })
+      return rateLimitResponse()
     }
 
     // Validate transcript length (prevent abuse)

@@ -4,10 +4,12 @@ import { mapYtDlpError } from './error-mapper'
 import { transformYtDlpVideoInfoArray } from './video-metadata-utils'
 import { createTimer } from './utils'
 import { enrichVideosWithViewCounts } from './ytdlp-video-info'
+import { redactVideoUrl } from './logger'
 import {
   ytdlpLogger as logger,
   getYtDlpInstance,
   extractOutputString,
+  ytdlpExec,
   type YtDlpOutput,
   type YtDlpJsonInfo,
 } from './ytdlp-core'
@@ -26,7 +28,7 @@ export async function getPlaylistVideos(
 ): Promise<VideoMetadata[]> {
   const timer = createTimer()
   timer.start()
-  logger.info('Getting playlist videos', { playlistUrl, maxVideos, fetchViewCounts })
+  logger.info('Getting playlist videos', { playlistUrl: redactVideoUrl(playlistUrl), maxVideos, fetchViewCounts })
 
   const ytDlp = getYtDlpInstance()
 
@@ -42,7 +44,7 @@ export async function getPlaylistVideos(
     logger.debug('yt-dlp command args', { args })
 
     logger.info('Executing yt-dlp command for playlist')
-    const output = await ytDlp.execPromise(args)
+    const output = await ytdlpExec(signal => ytDlp.execPromise(args, {}, signal), `playlist listing: ${playlistUrl}`)
     const outputStr = extractOutputString(output as YtDlpOutput)
     const lines = outputStr.split('\n').filter(line => line.trim())
     logger.debug('Parsed yt-dlp output', { lineCount: lines.length, outputLength: outputStr.length })
@@ -78,7 +80,7 @@ export async function getPlaylistVideos(
     return videos
   } catch (error) {
     logger.error('Failed to get playlist videos', error, {
-      playlistUrl,
+      playlistUrl: redactVideoUrl(playlistUrl),
       maxVideos,
       duration: timer.elapsedMs(),
     })
@@ -100,11 +102,11 @@ export async function getChannelVideos(
 ): Promise<VideoMetadata[]> {
   const timer = createTimer()
   timer.start()
-  logger.info('Getting channel videos', { channelUrl, maxVideos, fetchViewCounts })
+  logger.info('Getting channel videos', { channelUrl: redactVideoUrl(channelUrl), maxVideos, fetchViewCounts })
 
   const normalizedUrl = normalizeAndEncodeChannelUrl(channelUrl)
-  logger.debug('Normalized and encoded channel URL', { original: channelUrl, normalized: normalizedUrl })
+  logger.debug('Normalized and encoded channel URL', { original: redactVideoUrl(channelUrl), normalized: redactVideoUrl(normalizedUrl) })
 
-  logger.debug('Delegating to getPlaylistVideos', { normalizedUrl, maxVideos, fetchViewCounts })
+  logger.debug('Delegating to getPlaylistVideos', { normalizedUrl: redactVideoUrl(normalizedUrl), maxVideos, fetchViewCounts })
   return getPlaylistVideos(normalizedUrl, maxVideos, fetchViewCounts)
 }

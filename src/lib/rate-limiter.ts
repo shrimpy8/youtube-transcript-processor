@@ -62,14 +62,40 @@ export function createRateLimiter(config: RateLimiterConfig) {
 }
 
 /**
- * Extracts client IP from a Next.js request
+ * Extracts client IP from a Next.js request.
+ *
+ * Forwarded headers (x-forwarded-for, x-real-ip) are only trusted when
+ * TRUST_PROXY=true, which should only be set when the deployment runs behind
+ * a trusted reverse proxy that overwrites these headers. Without a trusted
+ * proxy these headers are trivially spoofable by the client.
+ *
+ * In production without TRUST_PROXY, the rate limiter falls back to 'local'
+ * (a single shared bucket) — which is conservative but safe. Set TRUST_PROXY=true
+ * once a verified proxy layer is in front of the app.
  */
 export function getClientIp(request: NextRequest): string {
-  return (
-    request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
-    request.headers.get('x-real-ip') ||
-    'unknown'
-  )
+  if (process.env.TRUST_PROXY === 'true') {
+    const forwarded = request.headers.get('x-forwarded-for')
+    if (forwarded) {
+      // Take the rightmost entry added by the trusted proxy, not the leftmost
+      // which can be spoofed by the client.
+      return forwarded.split(',').pop()?.trim() || 'unknown'
+    }
+    const realIp = request.headers.get('x-real-ip')
+    if (realIp) return realIp.trim()
+  }
+
+  if (process.env.NODE_ENV === 'production' && !process.env.TRUST_PROXY) {
+    // Warn once per cold start — all requests share the same rate-limit bucket
+    // until TRUST_PROXY=true is set and a real proxy provides per-client IPs.
+    console.warn(
+      '[rate-limiter] TRUST_PROXY is not set. All requests share the same rate-limit bucket. ' +
+      'Set TRUST_PROXY=true when running behind a trusted reverse proxy.'
+    )
+  }
+
+  // Safe fallback: a single shared key. Conservative but not bypassable.
+  return 'local'
 }
 
 /**
