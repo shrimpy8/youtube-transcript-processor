@@ -58,3 +58,24 @@ export function createLogger(serviceName?: string): {
  */
 export const logger = createLogger('app')
 
+/**
+ * Redacts a YouTube video URL to its video ID only.
+ * Full URLs are only returned when DEBUG_LOG_FULL_URLS=true.
+ *
+ * @param url - Original YouTube URL (may include query params, tokens, etc.)
+ * @returns Redacted string safe for logging (e.g. "youtube.com/watch?v=dQw4w9WgXcQ")
+ */
+export function redactVideoUrl(url: string): string {
+  if (process.env.DEBUG_LOG_FULL_URLS === 'true') return url
+  try {
+    const u = new URL(url)
+    const videoId =
+      u.searchParams.get('v') ||
+      u.pathname.split('/').filter(Boolean).pop() ||
+      'unknown'
+    return `youtube.com/watch?v=${videoId}`
+  } catch {
+    return '[redacted-url]'
+  }
+}
+

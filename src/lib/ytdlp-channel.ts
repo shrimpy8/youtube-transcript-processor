@@ -1,11 +1,13 @@
 import { normalizeVideoUrl } from './url-utils'
 import { mapYtDlpError } from './error-mapper'
 import { createTimer } from './utils'
+import { redactVideoUrl } from './logger'
 import {
   ytdlpLogger as logger,
   getYtDlpInstance,
   extractOutputString,
   extractVideoIdOrUnknown,
+  ytdlpExec,
   YTDLP_JSON_ARGS,
   type YtDlpOutput,
   type YtDlpJsonInfo,
@@ -25,18 +27,18 @@ export async function getChannelInfoFromVideo(videoUrl: string): Promise<{
 }> {
   const timer = createTimer()
   timer.start()
-  logger.info('Getting channel info from video', { videoUrl })
+  logger.info('Getting channel info from video', { videoUrl: redactVideoUrl(videoUrl) })
 
   const ytDlp = getYtDlpInstance()
   const fullUrl = normalizeVideoUrl(videoUrl)
-  logger.debug('Normalized video URL', { original: videoUrl, normalized: fullUrl })
+  logger.debug('Normalized video URL', { original: redactVideoUrl(videoUrl), normalized: redactVideoUrl(fullUrl) })
 
   try {
     const args = [fullUrl, ...YTDLP_JSON_ARGS]
     logger.debug('yt-dlp command args', { args })
 
     logger.info('Executing yt-dlp command for channel info')
-    const output = await ytDlp.execPromise(args)
+    const output = await ytdlpExec(signal => ytDlp.execPromise(args, {}, signal), `channel info from video: ${fullUrl}`)
     const outputStr = extractOutputString(output as YtDlpOutput)
 
     logger.debug('Parsing yt-dlp JSON output', { outputLength: outputStr.length })
@@ -113,7 +115,7 @@ export async function getChannelInfoFromVideo(videoUrl: string): Promise<{
       }
     }
 
-    logger.debug('Built channel URL', { channelUrl, urlSource })
+    logger.debug('Built channel URL', { channelUrl: redactVideoUrl(channelUrl), urlSource })
 
     const result = {
       channelUrl,
@@ -123,7 +125,7 @@ export async function getChannelInfoFromVideo(videoUrl: string): Promise<{
     }
 
     logger.info('Channel info retrieved successfully', {
-      channelUrl: result.channelUrl,
+      channelUrl: redactVideoUrl(result.channelUrl),
       channelName: result.channelName,
       channelId: result.channelId,
       urlSource,
@@ -133,8 +135,8 @@ export async function getChannelInfoFromVideo(videoUrl: string): Promise<{
     return result
   } catch (error) {
     logger.error('Failed to get channel info from video', error, {
-      videoUrl,
-      fullUrl,
+      videoUrl: redactVideoUrl(videoUrl),
+      fullUrl: redactVideoUrl(fullUrl),
       duration: timer.elapsedMs(),
     })
     const videoId = extractVideoIdOrUnknown(fullUrl)

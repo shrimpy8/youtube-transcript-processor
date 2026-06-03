@@ -6,10 +6,12 @@ import * as os from 'os'
 import { normalizeVideoUrl } from './url-utils'
 import { mapYtDlpError } from './error-mapper'
 import { createTimer } from './utils'
+import { redactVideoUrl } from './logger'
 import {
   ytdlpLogger as logger,
   getYtDlpInstance,
   extractVideoIdOrUnknown,
+  ytdlpExec,
   type SubtitleOptions,
 } from './ytdlp-core'
 
@@ -25,7 +27,7 @@ export async function downloadSubtitles(
 ): Promise<TranscriptSegment[]> {
   const timer = createTimer()
   timer.start()
-  logger.info('Starting subtitle download', { videoUrl, options })
+  logger.info('Starting subtitle download', { videoUrl: redactVideoUrl(videoUrl), options })
 
   const ytDlp = getYtDlpInstance()
   const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'ytdlp-'))
@@ -51,14 +53,14 @@ export async function downloadSubtitles(
 
     try {
       logger.info('Executing yt-dlp command')
-      await ytDlp.execPromise(args)
+      await ytdlpExec(signal => ytDlp.execPromise(args, {}, signal), `subtitle download: ${videoId}`)
       logger.debug('yt-dlp command completed successfully')
     } catch (error) {
       logger.warn('yt-dlp command threw error, checking for output files', { error })
       const files = await fs.readdir(tempDir).catch(() => [])
       logger.debug('Files in temp directory', { files, count: files.length })
       if (files.length === 0) {
-        logger.error('No files created after yt-dlp execution', error, { videoUrl, tempDir })
+        logger.error('No files created after yt-dlp execution', error, { videoUrl: redactVideoUrl(videoUrl), tempDir })
         throw error
       }
       logger.info('Files found despite error, continuing', { files })
@@ -97,7 +99,7 @@ export async function downloadSubtitles(
     if (!srtFile) {
       const files = await fs.readdir(tempDir).catch(() => [])
       logger.error('No subtitle file found', undefined, {
-        videoUrl,
+        videoUrl: redactVideoUrl(videoUrl),
         tempDir,
         files,
         possibleFiles,
@@ -122,7 +124,7 @@ export async function downloadSubtitles(
     return segments
   } catch (error) {
     logger.error('Subtitle download failed', error, {
-      videoUrl,
+      videoUrl: redactVideoUrl(videoUrl),
       options,
       duration: timer.elapsedMs(),
     })

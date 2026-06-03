@@ -89,6 +89,11 @@ export async function POST(request: NextRequest) {
       )
     }
     const videoUrl = typeof body.videoUrl === 'string' ? body.videoUrl : undefined
+    // View-count enrichment is opt-in: each enrichment call triggers an additional
+    // yt-dlp subprocess per video. Only enrich when explicitly requested AND the
+    // fetch limit is small enough to be safe (≤ 20 videos).
+    const enrichWithViewCounts =
+      body.enrichWithViewCounts === true && CHANNEL_VIDEO_FETCH_LIMIT <= 20
 
     // Validate input
     if (!videoUrl) {
@@ -122,8 +127,9 @@ export async function POST(request: NextRequest) {
       // Try to fetch channel videos, but don't fail if this doesn't work
       let topVideos: VideoMetadata[] = []
       try {
-        // Fetch channel videos with view counts (get more than 10 to sort by popularity)
-        const allVideos = await getChannelVideos(channelInfo.channelUrl, CHANNEL_VIDEO_FETCH_LIMIT, true)
+        // Fetch channel videos. View-count enrichment is opt-in (see enrichWithViewCounts above)
+        // to avoid amplifying yt-dlp calls when the caller does not need sorted-by-popularity results.
+        const allVideos = await getChannelVideos(channelInfo.channelUrl, CHANNEL_VIDEO_FETCH_LIMIT, enrichWithViewCounts)
         
         // Sort videos by view count (highest first), fallback to date if view count unavailable
         const sortedVideos = allVideos.sort((a, b) => {
