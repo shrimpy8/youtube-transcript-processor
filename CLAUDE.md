@@ -1,5 +1,7 @@
 # CLAUDE.md — ytpodcast-transcript2
 
+> **Scope:** project-specific decisions, invariants, and gotchas only. General engineering, security, language, and testing standards are handled globally and are not restated here.
+
 ## Project
 Next.js 15 (App Router) + TypeScript application that extracts, processes, and exports YouTube podcast transcripts with AI-powered summaries via Anthropic, Google Gemini, and Perplexity.
 
@@ -19,6 +21,36 @@ npm run lint         # eslint
 npm test             # vitest unit tests
 npm run test:e2e     # playwright e2e tests
 ```
+
+---
+
+## Architecture
+
+Request flow: an API route in `src/app/api/` validates input → acquires a concurrency semaphore → spawns a `yt-dlp` subprocess (via `yt-dlp-wrap`) for subtitles/metadata → normalizes the transcript → optionally sends it to an LLM provider (Anthropic / Gemini / Perplexity) for summarization → returns JSON. All providers share one prompt-construction path; transcripts are untrusted input and are neutralized before prompting (see Security Patterns).
+
+## Key Files
+
+| Area | File(s) | Notes |
+|------|---------|-------|
+| API routes | `src/app/api/{transcript,channel,discover,ai-summary}/route.ts` | one folder per endpoint; `discover` + `channel` accept `maxVideos` (capped server-side at 50) |
+| yt-dlp wrappers | `src/lib/ytdlp-{subtitles,channel,video-info,listing,core}.ts` | subprocess spawning; all go through `ytdlpExec()` |
+| Concurrency / timeout | `ytdlpExec()` in `src/lib/` | acquires the semaphore BEFORE spawn; kills the subprocess via `AbortSignal` on timeout |
+| Rate limiting | `src/lib/` rate limiter | keys on client IP via `getClientIp()` + `TRUST_PROXY` |
+| LLM summaries | `src/lib/` LLM helpers + `prompts/` | prompt templates load from `prompts/`, never inlined |
+| Logging | `src/lib/` logger | URLs pass through `redactVideoUrl()` |
+| UI | `src/components/` | React 19 + shadcn/ui |
+
+## Do Not Change Without Care
+
+- **Concurrency semaphore + `AbortSignal` timeout in `ytdlpExec()`** — every subprocess must be capped and killable; bypassing it leaks processes (YTP-03).
+- **`redactVideoUrl()` at every log site** — full URLs in logs can expose private/unlisted content (YTP-06).
+- **Server-side `maxVideos` cap (50) and `enrichWithViewCounts` opt-in** — these bound external `yt-dlp` calls and API spend (YTP-05).
+- **`neutralizeTranscriptTags()` before any prompt** — transcripts are untrusted; skipping it is a prompt-injection hole (YTP-01).
+- **`prompts/` templates** — change prompts there, not inline in route/LLM code.
+
+## Testing
+
+`npm test` (Vitest unit) · `npm run test:e2e` (Playwright). Run `npm run build` (type-check) and the unit tests before marking work done.
 
 ---
 
